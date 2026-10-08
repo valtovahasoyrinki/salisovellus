@@ -195,7 +195,9 @@ Kirjattu, koska etenin ilman erillistä kysymystä:
 9. Teema: tumma oletuksena, vaalea ja järjestelmä valittavissa (§6.11).
 10. Kieli vain suomi (fi-FI), ei i18n-kehystä – §2 määrittelee yhden käyttäjän ja yhden kielen.
 11. Kaavioiden datapisteiden desimointi: yli 400 pisteen sarjat harvennetaan LTTB-tyylisesti piirtoa varten; tooltip ja laskenta käyttävät aina täyttä dataa.
-12. **Node.js asennetaan Homebrew'lla** (`brew install node`) – koneella ei ole Nodea, eikä Vite-projektia voi muuten rakentaa.
+12. **Kehonpainoliikkeiden volyymi** lasketaan vain positiivisesta lisäpainosta (`max(0, paino) × toistot`), koska kehonpainoa ei seurata (§10). Seuraukset, jotka on hoidettu muualla: avustetuilla liikkeillä ei ole e1RM-ennätystä eikä trendiä (mittarina toistot), ja Push/Pull/Legs-tasapaino lasketaan **työsarjojen** jakaumasta (`setsByMovementGroup`) eikä kilogrammoista — muuten leuanvedot ja dipit vääristäisivät Pull-puolta nollavolyymillaan. Volyymijakauma näytetään toissijaisena lukuna. Tämä on perusteltu poikkeama §6.8:n sanamuodosta.
+13. **Liikeanalyysin oletusmittari** on e1RM, paitsi `bodyweight`- ja `time`-tyypin liikkeillä, joilla se on parhaan sarjan toistot tai kesto.
+14. **Node.js asennetaan Homebrew'lla** (`brew install node`) – koneella ei ole Nodea, eikä Vite-projektia voi muuten rakentaa.
 
 ## 8. Riskit
 
