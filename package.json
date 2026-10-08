@@ -14,7 +14,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
-    "seed:demo": "echo \"Aja selaimessa: Asetukset -> Kehitys -> Generoi testidata\"",
+    "seed:demo": "node scripts/generate-test-data.mjs",
     "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
