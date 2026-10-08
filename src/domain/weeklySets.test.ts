@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Exercise, Session, SetEntry } from './types'
 import {
   previousWeekKey,
+  setsByMovementGroup,
   targetStreak,
   volumeByMovementGroup,
   weeklySetsByMuscle,
@@ -67,6 +68,26 @@ const exercises = new Map<string, Exercise>([
   [
     'ylatalja',
     exercise({ id: 'ylatalja', name: 'Ylätalja', primaryMuscles: ['lats'], secondaryMuscles: ['biceps'] }),
+  ],
+  [
+    'leuat',
+    exercise({
+      id: 'leuat',
+      name: 'Leuanveto',
+      primaryMuscles: ['lats'],
+      secondaryMuscles: ['biceps'],
+      equipment: 'bodyweight',
+      kind: 'bodyweight',
+    }),
+  ],
+  [
+    'maasta',
+    exercise({
+      id: 'maasta',
+      name: 'Maastaveto',
+      primaryMuscles: ['glutes', 'lower_back'],
+      secondaryMuscles: ['hamstrings'],
+    }),
   ],
 ])
 
@@ -137,6 +158,68 @@ describe('volyymin jakauma liikeryhmiin', () => {
       exercises,
     )
     expect(totals.pull).toBe(0)
+  })
+})
+
+describe('työsarjat liikeryhmittäin', () => {
+  it('tyhjä historia tuottaa nollat', () => {
+    expect(setsByMovementGroup([], exercises)).toEqual({ push: 0, pull: 0, legs: 0, core: 0 })
+  })
+
+  it('laskee yhden sarjan liikkeen ensisijaiselle liikeryhmälle', () => {
+    const totals = setsByMovementGroup(
+      [
+        set({ exerciseId: 'penkki' }),
+        set({ exerciseId: 'penkki' }),
+        set({ exerciseId: 'ylatalja' }),
+      ],
+      exercises,
+    )
+    expect(totals).toEqual({ push: 2, pull: 1, legs: 0, core: 0 })
+  })
+
+  it('kehonpainoliike tuottaa sarjoja vaikka volyymi on nolla', () => {
+    // Leuanveto ilman lisäpainoa: työ on tehty, kiloja ei kirjaudu.
+    const pullups = [
+      set({ exerciseId: 'leuat', weight: 0, reps: 10 }),
+      set({ exerciseId: 'leuat', weight: 0, reps: 8 }),
+      set({ exerciseId: 'leuat', weight: -5, reps: 8 }),
+    ]
+    const bench = [set({ exerciseId: 'penkki', weight: 80, reps: 8 })]
+
+    const volume = volumeByMovementGroup([...pullups, ...bench], exercises)
+    expect(volume.pull).toBe(0)
+    expect(volume.push).toBe(640)
+
+    // Sarjamäärillä tasapaino on oikea: pull 3, push 1.
+    const sets = setsByMovementGroup([...pullups, ...bench], exercises)
+    expect(sets.pull).toBe(3)
+    expect(sets.push).toBe(1)
+  })
+
+  it('eri liikeryhmiin kuuluvat ensisijaiset lihakset jakavat sarjan tasan', () => {
+    // Maastaveto: pakara (legs) + alaselkä (core) -> 0,5 kummallekin.
+    expect(setsByMovementGroup([set({ exerciseId: 'maasta' })], exercises)).toEqual({
+      push: 0,
+      pull: 0,
+      legs: 0.5,
+      core: 0.5,
+    })
+  })
+
+  it('ohittaa sarjat, joiden liikettä ei löydy', () => {
+    expect(setsByMovementGroup([set({ exerciseId: 'poistettu' })], exercises)).toEqual({
+      push: 0,
+      pull: 0,
+      legs: 0,
+      core: 0,
+    })
+  })
+
+  it('laskee vain työsarjat', () => {
+    expect(
+      setsByMovementGroup([set({ exerciseId: 'penkki', warmup: true }), set({})], exercises).push,
+    ).toBe(1)
   })
 })
 

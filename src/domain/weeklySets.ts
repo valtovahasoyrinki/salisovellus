@@ -63,14 +63,15 @@ export function weeklySetsByMuscle(
 }
 
 /**
- * Volyymin jakauma liikeryhmiin (SPEC §6.8). Sarjan volyymi kohdistetaan
- * liikkeen **ensisijaisten** lihasryhmien liikeryhmille ja jaetaan tasan, jos
- * ensisijaiset lihakset kuuluvat eri ryhmiin (esim. rinta + etuolkapää = push,
- * mutta etureisi + pakara = legs kokonaan).
+ * Sarjan kohdistus liikeryhmiin: liikkeen **ensisijaisten** lihasryhmien
+ * liikeryhmät, ja arvo jaetaan tasan, jos ensisijaiset lihakset kuuluvat eri
+ * ryhmiin (esim. rinta + etuolkapää = push, mutta etureisi + pakara = legs
+ * kokonaan). Liikkeet, joita ei löydy kartasta, ohitetaan.
  */
-export function volumeByMovementGroup(
+function byMovementGroup(
   sets: SetEntry[],
   exercises: Map<string, Exercise>,
+  valueOf: (set: SetEntry) => number,
 ): Record<MovementGroup, number> {
   const totals: Record<MovementGroup, number> = { push: 0, pull: 0, legs: 0, core: 0 }
 
@@ -81,11 +82,39 @@ export function volumeByMovementGroup(
       exercise.primaryMuscles.map((muscle) => MUSCLE_GROUP[muscle]),
     )
     if (groups.size === 0) continue
-    const share = setVolume(set) / groups.size
+    const share = valueOf(set) / groups.size
     for (const group of groups) totals[group] += share
   }
 
   return totals
+}
+
+/**
+ * Push/Pull/Legs-tasapainon **ensisijainen** mittari (SPEC §6.8): työsarjojen
+ * määrä liikeryhmittäin.
+ *
+ * Sarjamäärä on tasapainon oikea yksikkö, koska kehonpainoliikkeiden volyymi on
+ * nolla (ks. `volume.ts`): leuanvedot ja dipit ilman lisäpainoa tekevät työtä,
+ * mutta eivät kiloja, joten pelkkä volyymivertailu näyttäisi pull-puolen
+ * systemaattisesti todellista pienempänä.
+ */
+export function setsByMovementGroup(
+  sets: SetEntry[],
+  exercises: Map<string, Exercise>,
+): Record<MovementGroup, number> {
+  return byMovementGroup(sets, exercises, () => 1)
+}
+
+/**
+ * Volyymin jakauma liikeryhmiin (SPEC §6.8), toissijainen mittari
+ * `setsByMovementGroup`in rinnalla: kertoo kuormasta, mutta ei näe
+ * kehonpainoliikkeiden työtä.
+ */
+export function volumeByMovementGroup(
+  sets: SetEntry[],
+  exercises: Map<string, Exercise>,
+): Record<MovementGroup, number> {
+  return byMovementGroup(sets, exercises, setVolume)
 }
 
 /** Päätettyjen treenien määrä viikoittain. Kesken oleva treeni ei lasketa. */
