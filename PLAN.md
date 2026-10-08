@@ -38,6 +38,7 @@ Periaatteet:
 | Kaaviot | **Omat SVG-kaaviot** + Motion (`pathLength`-piirto) | Poikkeama §4:n ehdotuksista (Recharts/visx): kosketustooltip halutaan toimimaan yhdellä `pointermove`-kuulijalla ja binäärihaulla ilman komponenttipuun uudelleenrenderöintiä, 3 vuoden data desimoidaan itse, ja nipusta jää ~90 kt pois. Kaavio on tässä sovelluksessa ydintoiminto, joten se kannattaa omistaa itse. |
 | Validointi | `zod` | §4 (tuonti + lomakkeet) |
 | PWA | `vite-plugin-pwa` (Workbox, generateSW, precache kaikki assetit + fontit) | §4 |
+| Lint | **oxlint** | Virallinen `create-vite`-pohja vaihtoi eslintistä oxlintiin; sama kattavuus, moninkertainen nopeus |
 | Testit | Vitest + Testing Library, Playwright (iPhone 12 / Pixel 5 -profiilit), `fake-indexeddb` yksikkötesteihin | §4, §8 |
 | Fontti | **Inter Variable**, self-hosted, latin-subset; numerot `font-variant-numeric: tabular-nums` | Poikkeama §7:n "kaksi fonttia" -hengestä: Inter sisältää tasalevyiset numerot, joten yksi ~40 kt woff2 riittää → nopeampi kylmäkäynnistys (§8: alle 1 s) |
 | ID:t | Oma `newId()`: aikaleima-prefix + satunnaisuus (lajiteltava) | `crypto.randomUUID()` vaatii secure contextin (puuttuu paljaalta LAN-HTTP:ltä); lajiteltava ID auttaa myös Dexie-indekseissä |
@@ -170,7 +171,7 @@ Jokainen delegointi sisältää: tavoite, SPEC-viittaukset, muokattavat tiedosto
 
 ```
 npm run typecheck   tsc --noEmit (strict)
-npm run lint        eslint
+npm run lint        oxlint
 npm run test        vitest run
 npm run test:e2e    playwright test (iPhone 12 + Pixel 5)
 npm run build       vite build

@@ -9,13 +9,14 @@ Henkilökohtainen salitreenisovellus (PWA). Yksi käyttäjä, suomenkielinen, t�
 npm run dev          # Vite dev-palvelin
 npm run dev:host     # dev-palvelin LAN:iin (puhelintestaus)
 npm run typecheck    # tsc --noEmit (strict)
-npm run lint         # eslint
+npm run lint         # oxlint
 npm run test         # vitest run
 npm run test:watch   # vitest
 npm run test:e2e     # playwright test (iPhone 12 + Pixel 5)
 npm run build        # vite build (tuottaa dist/)
 npm run preview      # tuotantonipun esikatselu
-npm run seed:demo    # generoi 3 v testidataa suorituskykytestiin
+npm run screenshots  # kuvakaappaukset päänäkymistä (vaatii preview-palvelimen)
+npm run icons        # rasteroi sovellusikonit public/icons/*.svg:stä
 ```
 
 Laatuportti ennen jokaista committia: `npm run typecheck && npm run lint && npm run test && npm run build`.
@@ -42,6 +43,7 @@ Laatuportti ennen jokaista committia: `npm run typecheck && npm run lint && npm 
 8. **Ei TODO-kommentteja, kuollutta koodia eikä mock-dataa tuotantokoodissa.**
 9. Tyylit vain Tailwind-luokilla ja `src/styles/tokens.css`:n muuttujilla. Ei kovakoodattuja värejä komponenteissa.
 10. Animaatiot vain `transform`/`opacity`, `prefers-reduced-motion` kunnioitetaan.
+11. Lint-poikkeukset (`oxlint-disable-next-line`) vaativat yhden rivin perustelun viereen.
 
 ## Konventiot
 
