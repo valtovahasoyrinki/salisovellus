@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.local
+.env*
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+.vite/
+.idea/
