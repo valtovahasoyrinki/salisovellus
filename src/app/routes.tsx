@@ -22,6 +22,8 @@ const ExerciseDetailScreen = lazy(() => import('@/features/exercises/ExerciseDet
 const SettingsScreen = lazy(() => import('@/features/settings/SettingsScreen'))
 const BackupScreen = lazy(() => import('@/features/backup/BackupScreen'))
 const OnboardingScreen = lazy(() => import('@/features/onboarding/OnboardingScreen'))
+/* Kehitystyökalu: komponenttigalleria visuaaliseen tarkistukseen (ei navigaatiossa). */
+const ComponentGallery = lazy(() => import('@/features/devtools/ComponentGallery'))
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<ScreenSkeleton />}>{children}</Suspense>
@@ -120,6 +122,14 @@ export function AppRoutes() {
           element={
             <Lazy>
               <OnboardingScreen />
+            </Lazy>
+          }
+        />
+        <Route
+          path="dev/gallery"
+          element={
+            <Lazy>
+              <ComponentGallery />
             </Lazy>
           }
         />

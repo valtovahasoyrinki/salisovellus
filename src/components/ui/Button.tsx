@@ -15,7 +15,7 @@ const VARIANTS: Record<Variant, string> = {
 
 // Kosketusalue vähintään 48 px (SPEC §6.3).
 const SIZES: Record<Size, string> = {
-  sm: 'min-h-11 px-3 text-sm rounded-lg gap-1.5',
+  sm: 'min-h-12 px-3 text-sm rounded-lg gap-1.5',
   md: 'min-h-12 px-4 text-[0.9375rem] rounded-xl gap-2',
   lg: 'min-h-14 px-5 text-base rounded-2xl gap-2',
 }

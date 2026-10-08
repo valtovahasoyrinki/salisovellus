@@ -19,7 +19,7 @@
 
   --text: oklch(97% 0.002 264);
   --text-muted: oklch(72% 0.006 264);
-  --text-faint: oklch(54% 0.006 264);
+  --text-faint: oklch(63% 0.006 264);
 
   /* Teräsaksentti: vaalea pinta mustalla taustalla = vahvin mahdollinen kontrasti. */
   --accent: oklch(88% 0.008 250);
@@ -30,7 +30,7 @@
   --good: oklch(78% 0.17 150);
   --good-dim: oklch(33% 0.08 150);
   --danger: oklch(64% 0.21 25);
-  --danger-dim: oklch(32% 0.1 25);
+  --danger-dim: oklch(21% 0.07 25);
   --warn: oklch(80% 0.14 85);
 
   --record: oklch(86% 0.14 90);
@@ -50,6 +50,17 @@
   --chart-fill-from: oklch(88% 0.008 250 / 0.18);
   --chart-fill-to: oklch(88% 0.008 250 / 0);
 
+  /*
+   * Lihaskartta (SPEC §7). Omat tokenit, koska vartalo piirretään sekä
+   * mustalle taustalle että korttipinnan päälle: pintatokenit eivät erotu
+   * molemmissa. Ensisijainen lihas = --accent, toissijainen = --muscle-secondary,
+   * treenaamaton = --muscle-idle; viikon lämpökartta säätää peittävyyttä.
+   */
+  --body-fill: oklch(19% 0.004 264);
+  --body-stroke: oklch(36% 0.005 264);
+  --muscle-idle: oklch(29% 0.005 264);
+  --muscle-secondary: oklch(58% 0.01 250);
+
   --shadow-sheet: 0 -8px 40px oklch(0% 0 0 / 0.7);
   --shadow-float: 0 4px 24px oklch(0% 0 0 / 0.55);
 }
@@ -66,7 +77,7 @@
 
   --text: oklch(17% 0.005 264);
   --text-muted: oklch(44% 0.007 264);
-  --text-faint: oklch(58% 0.007 264);
+  --text-faint: oklch(50% 0.007 264);
 
   --accent: oklch(29% 0.012 250);
   --accent-hover: oklch(22% 0.012 250);
@@ -74,12 +85,12 @@
   --accent-ink: oklch(99% 0 0);
 
   --good: oklch(52% 0.15 150);
-  --good-dim: oklch(92% 0.06 150);
+  --good-dim: oklch(96% 0.035 150);
   --danger: oklch(52% 0.2 25);
   --danger-dim: oklch(93% 0.05 25);
-  --warn: oklch(58% 0.13 70);
+  --warn: oklch(50% 0.12 70);
 
-  --record: oklch(58% 0.13 80);
+  --record: oklch(47% 0.11 80);
 
   --ring: oklch(35% 0.02 250);
   --overlay: oklch(25% 0.01 264 / 0.5);
@@ -95,6 +106,12 @@
   --chart-line: var(--accent);
   --chart-fill-from: oklch(29% 0.012 250 / 0.16);
   --chart-fill-to: oklch(29% 0.012 250 / 0);
+
+  /* Lihaskartta – perustelu tummassa lohkossa. */
+  --body-fill: oklch(94% 0.003 264);
+  --body-stroke: oklch(73% 0.006 264);
+  --muscle-idle: oklch(86.5% 0.005 264);
+  --muscle-secondary: oklch(62% 0.012 250);
 
   --shadow-sheet: 0 -8px 40px oklch(20% 0.01 264 / 0.18);
   --shadow-float: 0 4px 20px oklch(20% 0.01 264 / 0.15);
