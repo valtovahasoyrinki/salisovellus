@@ -104,6 +104,7 @@ describe('muotoilu', () => {
     expect(formatClock(150)).toBe('2:30')
     expect(formatClock(-5)).toBe('0:00')
     expect(formatClock(605)).toBe('10:05')
+    expect(formatDuration(45)).toBe('45 s')
     expect(formatDuration(2880)).toBe('48 min')
     expect(formatDuration(4320)).toBe('1 h 12 min')
     expect(formatDuration(7200)).toBe('2 h')

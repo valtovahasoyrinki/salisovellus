@@ -10,11 +10,12 @@ export function App() {
 
   return (
     <ThemeProvider>
-      <ToastProvider>
-        <RestTimerProvider
-          soundEnabled={settings.restSoundEnabled}
-          vibrationEnabled={settings.restVibrationEnabled}
-        >
+      {/* Ajastin on ulompana, jotta ilmoitukset osaavat asettua sen yläpuolelle. */}
+      <RestTimerProvider
+        soundEnabled={settings.restSoundEnabled}
+        vibrationEnabled={settings.restVibrationEnabled}
+      >
+        <ToastProvider>
           {/*
             HashRouter: toimii millä tahansa staattisella hostilla ilman
             uudelleenkirjoitussääntöjä, myös GitHub Pagesin alipolussa.
@@ -22,8 +23,8 @@ export function App() {
           <HashRouter>
             <AppRoutes />
           </HashRouter>
-        </RestTimerProvider>
-      </ToastProvider>
+        </ToastProvider>
+      </RestTimerProvider>
     </ThemeProvider>
   )
 }

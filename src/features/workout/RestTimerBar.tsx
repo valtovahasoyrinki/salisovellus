@@ -10,8 +10,12 @@ import { formatClock } from '@/lib/date'
 export function RestTimerBar({ inWorkout }: { inWorkout: boolean }) {
   const { state, remainingSec, finished, adjust, skip } = useRestTimer()
 
+  /*
+    Kirjausnäkymässä ajastin asettuu alapalkin (Lisää liike / Järjestä)
+    yläpuolelle, muualla alapalkin navigaation yläpuolelle.
+  */
   const bottomClass = inWorkout
-    ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]'
+    ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)]'
     : 'bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)]'
 
   return (

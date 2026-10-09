@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
+import { useRestTimer } from '@/app/providers/RestTimerProvider'
 import { newId } from '@/lib/id'
 
 export interface ToastAction {
@@ -28,6 +29,8 @@ export function useToast(): ToastApi {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
+  // Kelluva lepoajastin on ruudun alalaidassa: ilmoitukset nousevat sen yläpuolelle.
+  const { state: restTimer } = useRestTimer()
   const timers = useRef(new Map<string, number>())
 
   const dismiss = useCallback((id: string) => {
@@ -63,7 +66,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={api}>
       {children}
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 px-3 pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)]"
+        className={`pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 px-3 ${
+          restTimer === null
+            ? 'pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)]'
+            : 'pb-[calc(env(safe-area-inset-bottom,0px)+10rem)]'
+        }`}
         aria-live="polite"
       >
         <AnimatePresence initial={false}>

@@ -261,9 +261,10 @@ export function formatClock(totalSeconds: number): string {
   return `${minutes}:${pad(clamped % 60)}`
 }
 
-/** Treenin kesto: "1 h 12 min" tai "48 min". */
+/** Treenin kesto: "1 h 12 min", "48 min" tai alle minuutin "45 s". */
 export function formatDuration(totalSeconds: number): string {
   const clamped = Math.max(0, Math.round(totalSeconds))
+  if (clamped < 60) return `${clamped} s`
   const hours = Math.floor(clamped / 3600)
   const minutes = Math.round((clamped % 3600) / 60)
   if (hours === 0) return `${minutes} min`
