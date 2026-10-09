@@ -29,10 +29,13 @@ const MAX_DAYS = 8
 export default function ProgramScreen() {
   const navigate = useNavigate()
   const toast = useToast()
-  const program = useLiveQuery(async () => (await getActiveProgram()) ?? null, [], undefined)
-  const days = useLiveQuery(
-    async () => (program ? listDays(program.id) : []),
-    [program?.id],
+  // Ohjelma ja päivät samassa kyselyssä, jotta tyhjä tila ei välähdä.
+  const programWithDays = useLiveQuery(
+    async () => {
+      const active = await getActiveProgram()
+      return { program: active ?? null, days: active ? await listDays(active.id) : [] }
+    },
+    [],
     undefined,
   )
   /* Liikkeiden määrä päivittäin yhdellä kyselyllä, jotta kortit eivät tee omia hakujaan. */
@@ -50,7 +53,8 @@ export default function ProgramScreen() {
   const [editing, setEditing] = useState<WorkoutDay | 'new' | null>(null)
   const [removing, setRemoving] = useState<WorkoutDay | null>(null)
 
-  if (program === undefined || days === undefined) return <ScreenSkeleton />
+  if (programWithDays === undefined) return <ScreenSkeleton />
+  const { program, days } = programWithDays
 
   if (program === null || days.length === 0) {
     return (

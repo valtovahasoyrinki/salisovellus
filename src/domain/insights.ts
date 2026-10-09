@@ -441,7 +441,26 @@ export function generateInsights(input: InsightInput): Insight[] {
 
 /** Kotinäkymän 1–3 tärkeintä havaintoa (SPEC §6.9). */
 export function insightsForHome(insights: Insight[], limit = 3): Insight[] {
-  return insights.slice(0, limit)
+  /*
+    Kotinäkymään valitaan tärkeimmät havainnot niin, että sama sääntö esiintyy
+    vain kerran: kolme peräkkäistä junnausriviä kertoisi vähemmän kuin junnaus,
+    epätasapaino ja viikkotavoite yhdessä. Jos eri sääntöjä on vähemmän kuin
+    `limit`, täydennetään listaa prioriteettijärjestyksessä.
+  */
+  const seen = new Set<InsightKind>()
+  const picked: Insight[] = []
+  for (const insight of insights) {
+    if (seen.has(insight.kind)) continue
+    seen.add(insight.kind)
+    picked.push(insight)
+    if (picked.length === limit) return picked
+  }
+  for (const insight of insights) {
+    if (picked.includes(insight)) continue
+    picked.push(insight)
+    if (picked.length === limit) break
+  }
+  return picked
 }
 
 /** Yhden liikkeen havainnot liikeanalyysiin. */

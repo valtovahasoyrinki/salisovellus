@@ -26,6 +26,11 @@
   --color-warn: var(--warn);
   --color-record: var(--record);
 
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+
   --color-day-1: var(--day-1);
   --color-day-2: var(--day-2);
   --color-day-3: var(--day-3);

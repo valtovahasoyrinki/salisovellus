@@ -31,10 +31,13 @@ export function WorkoutStartScreen() {
   const [pastDate, setPastDate] = useState(today)
   const [pastDayId, setPastDayId] = useState<string | null>(null)
 
-  const program = useLiveQuery(async () => (await getActiveProgram()) ?? null, [], undefined)
+  // Ohjelma ja päivät samassa kyselyssä, jotta tyhjä tila ei välähdä.
   const days = useLiveQuery(
-    async () => (program ? listDays(program.id) : []),
-    [program?.id],
+    async () => {
+      const program = await getActiveProgram()
+      return program ? listDays(program.id) : []
+    },
+    [],
     undefined,
   )
   const lastDone = useLiveQuery(async () => (await getLastDoneSession()) ?? null, [], undefined)

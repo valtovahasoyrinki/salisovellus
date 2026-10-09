@@ -315,6 +315,27 @@ describe('järjestys, rajaus ja vakaus', () => {
     expect(kinds(insights)).toEqual(['group_imbalance', 'muscle_below_range', 'weekly_target'])
   })
 
+  it('kotinäkymä ei toista samaa sääntöä, jos muita on tarjolla', () => {
+    // Kolme junnaavaa liikettä ja yksi muu havainto: junnaus näkyy kerran.
+    const base = busyInput()
+    const stagnating = ['penkki', 'kyykky', 'maasta'].map((id) => ({
+      exercise: { ...base.exercises[0]!.exercise, id, name: id },
+      groups: base.exercises[0]!.groups,
+    }))
+    const insights = generateInsights({ ...base, exercises: stagnating })
+    const home = insightsForHome(insights)
+    expect(new Set(kinds(home)).size).toBe(home.length)
+  })
+
+  it('täydentää listan, vaikka eri sääntöjä olisi vähemmän kuin kolme', () => {
+    const insights: Parameters<typeof insightsForHome>[0] = [
+      { id: 'a', kind: 'stagnation', priority: 10, scope: 'exercise', exerciseId: 'x', text: 'a' },
+      { id: 'b', kind: 'stagnation', priority: 10, scope: 'exercise', exerciseId: 'y', text: 'b' },
+      { id: 'c', kind: 'stagnation', priority: 10, scope: 'exercise', exerciseId: 'z', text: 'c' },
+    ]
+    expect(insightsForHome(insights).map((insight) => insight.id)).toEqual(['a', 'b', 'c'])
+  })
+
   it('liikeanalyysi näkee vain oman liikkeensä havainnot', () => {
     const all = generateInsights(busyInput())
     expect(kinds(insightsForExercise(all, 'penkki'))).toEqual(['trend_up', 'fresh_record'])

@@ -50,10 +50,17 @@ export function useHomeData(weeklyTarget: number, weeklySetsRange: RepRange): Ho
 
   const activeSession = useLiveQuery(async () => (await getActiveSession()) ?? null, [], undefined)
   const lastDone = useLiveQuery(async () => (await getLastDoneSession()) ?? null, [], undefined)
-  const program = useLiveQuery(async () => (await getActiveProgram()) ?? null, [], undefined)
+  /*
+    Ohjelma ja sen päivät luetaan yhdessä kyselyssä: erillisinä `days` olisi
+    tyhjä taulukko ennen kuin ohjelma on ehtinyt latautua, ja kotinäkymä
+    ohjaisi käyttöönottoon vaikka ohjelma on olemassa.
+  */
   const days = useLiveQuery(
-    async () => (program ? listDays(program.id) : []),
-    [program?.id],
+    async () => {
+      const program = await getActiveProgram()
+      return program ? listDays(program.id) : []
+    },
+    [],
     undefined,
   )
   const sessions = useLiveQuery(() => listDoneSessions(), [], undefined)
