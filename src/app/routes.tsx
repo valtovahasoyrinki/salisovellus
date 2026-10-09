@@ -23,7 +23,13 @@ const SettingsScreen = lazy(() => import('@/features/settings/SettingsScreen'))
 const BackupScreen = lazy(() => import('@/features/backup/BackupScreen'))
 const OnboardingScreen = lazy(() => import('@/features/onboarding/OnboardingScreen'))
 /* Kehitystyökalu: komponenttigalleria visuaaliseen tarkistukseen (ei navigaatiossa). */
-const ComponentGallery = lazy(() => import('@/features/devtools/ComponentGallery'))
+/*
+  Komponenttigalleria on kehitystyökalu ja sisältää demoarvoja, joten se
+  rakennetaan vain kehitysajossa: tuotantonippuun ei jää mock-dataa.
+*/
+const ComponentGallery = import.meta.env.DEV
+  ? lazy(() => import('@/features/devtools/ComponentGallery'))
+  : null
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<ScreenSkeleton />}>{children}</Suspense>
@@ -117,14 +123,16 @@ export function AppRoutes() {
             </Lazy>
           }
         />
-        <Route
-          path="dev/gallery"
-          element={
-            <Lazy>
-              <ComponentGallery />
-            </Lazy>
-          }
-        />
+        {ComponentGallery === null ? null : (
+          <Route
+            path="dev/gallery"
+            element={
+              <Lazy>
+                <ComponentGallery />
+              </Lazy>
+            }
+          />
+        )}
       </Route>
 
       {/* Käyttöönotto on oma koko ruudun kulku: ei alapalkkia eikä ajastinpalkkia. */}

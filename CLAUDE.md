@@ -15,8 +15,10 @@ npm run test:watch   # vitest
 npm run test:e2e     # playwright test (iPhone 12 + Pixel 5)
 npm run build        # vite build (tuottaa dist/)
 npm run preview      # tuotantonipun esikatselu
-npm run screenshots  # kuvakaappaukset päänäkymistä (vaatii preview-palvelimen)
-npm run icons        # rasteroi sovellusikonit public/icons/*.svg:stä
+npm run screenshots  # kuvakaappaukset tyhjästä sovelluksesta (preview-palvelin)
+npm run screenshots:data  # kuvakaappaukset oikealla datalla (dev-palvelin portissa 5174)
+npm run icons        # rasteroi sovellusikonit ja iOS:n käynnistyskuvan
+npm run seed:demo    # generoi 3 vuoden testidatan tiedostoon testdata/
 ```
 
 Laatuportti ennen jokaista committia: `npm run typecheck && npm run lint && npm run test && npm run build`.
@@ -44,6 +46,10 @@ Laatuportti ennen jokaista committia: `npm run typecheck && npm run lint && npm 
 9. Tyylit vain Tailwind-luokilla ja `src/styles/tokens.css`:n muuttujilla. Ei kovakoodattuja värejä komponenteissa.
 10. Animaatiot vain `transform`/`opacity`, `prefers-reduced-motion` kunnioitetaan.
 11. Lint-poikkeukset (`oxlint-disable-next-line`) vaativat yhden rivin perustelun viereen.
+12. **Renderöinti on puhdasta:** `Date.now()` luetaan `useNow`-hookin kautta, ei renderissä.
+13. **`useLiveQuery` on vain lukemista varten.** Kirjoitus siinä kaataa Dexien `ReadOnlyError`iin.
+14. Toisiinsa liittyvät kyselyt (esim. ohjelma + sen päivät) samaan live-kyselyyn, jotta tyhjä tila ei välähdä ennen latauksen valmistumista.
+15. Kaaviot käyttävät `--chart-1…4`-tokeneita. Jos paletti muuttuu, aja `node scripts/validate_palette.js` (dataviz-skill) ja `node scripts/contrast.mjs`.
 
 ## Konventiot
 

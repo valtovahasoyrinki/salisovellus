@@ -22,9 +22,17 @@ npm run test         # Vitest (logiikka)
 npm run test:e2e     # Playwright, iPhone 12 + Pixel 5 -emulaatio
 npm run build        # tuotantonippu dist/-kansioon
 npm run preview      # tuotantonipun esikatselu portissa 4173
-npm run screenshots  # kuvakaappaukset päänäkymistä (vaatii preview-palvelimen)
-npm run icons        # rasteroi sovellusikonit public/icons/*.svg:stä
+npm run screenshots  # kuvakaappaukset tyhjästä sovelluksesta (vaatii preview-palvelimen)
+npm run screenshots:data  # kuvakaappaukset oikealla datalla (vaatii dev-palvelimen portissa 5174)
+npm run icons        # rasteroi sovellusikonit ja iOS:n käynnistyskuvan
+npm run seed:demo    # generoi 3 vuoden testidatan tiedostoon testdata/
 ```
+
+Kehitystyökalut:
+
+- `node scripts/contrast.mjs` – laskee teemojen kontrastisuhteet tokeneista (WCAG AA).
+- `node scripts/load-testdata.mjs` – lataa generoidun testidatan selaimeen suorituskykytestausta varten.
+- `/#/dev/gallery` – komponenttigalleria. Mukana vain kehitysajossa, ei tuotantonipussa.
 
 ## Testaus puhelimella kehityksen aikana
 
@@ -67,6 +75,18 @@ Data on vain puhelimessa. Selain voi poistaa tallennetun datan, jos tilaa loppuu
 - **Tuo JSON** validoi tiedoston, näyttää esikatselun (montako treeniä ja liikettä) ja kysyy, yhdistetäänkö vai korvataanko nykyinen data.
 - **Vie CSV** tuottaa sarjat litteänä taulukkona taulukkolaskentaan.
 - Sovellus pyytää selaimelta pysyvää tallennustilaa (`navigator.storage.persist()`); tila näkyy asetuksissa.
+
+## Laatu
+
+Jokainen vaihe on viety läpi samoilla porteilla: `typecheck`, `lint`, yksikkötestit, E2E-testit ja build.
+
+| Mittari | Tulos |
+|---|---|
+| Yksikkötestit | 232 testiä, 22 tiedostoa |
+| E2E-testit | 28 testiä, iPhone 12 ja Pixel 5 -profiilit |
+| Lighthouse (mobiili) | Performance 100, Accessibility 100, Best Practices 100 |
+| Suorituskyky | 3 vuotta dataa (624 treeniä, 17 056 sarjaa): koti 58 ms, analyysi ja historia alle 1 s |
+| Kontrastit | Kaikki käytössä olevat teksti/pinta-parit ≥ 4,5:1 molemmissa teemoissa |
 
 ## Arkkitehtuuri lyhyesti
 

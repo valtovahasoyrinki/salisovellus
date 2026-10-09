@@ -199,6 +199,16 @@ Kirjattu, koska etenin ilman erillistä kysymystä:
 13. **Liikeanalyysin oletusmittari** on e1RM, paitsi `bodyweight`- ja `time`-tyypin liikkeillä, joilla se on parhaan sarjan toistot tai kesto.
 14. **Node.js asennetaan Homebrew'lla** (`brew install node`) – koneella ei ole Nodea, eikä Vite-projektia voi muuten rakentaa.
 
+## 7b. Toteutuksen aikana tehdyt lisäpäätökset
+
+| Päätös | Perustelu |
+|---|---|
+| Viikkosarjat lihasryhmittäin esitetään **vaakapalkkeina ohjealueen kanssa**, ja viikkojen aikasarja **pinottuna palkkikaaviona liikeryhmittäin** (Push/Pull/Legs/keskivartalo) | SPEC §6.8 pyytää pinottua palkkia lihasryhmittäin, mutta 18 lihasryhmää vaatisi 18 väriä. Dataviz-ohjeen sääntö: yli kahdeksan sarjaa ei saa värittää erikseen. Nelisarjainen paletti on validoitu värisokeustestillä (`validate_palette.js`), ja lihasryhmäkohtainen tieto näkyy tarkemmin ohjealueeseen suhteutettuna. |
+| Kaavioiden paletti on oma tokenisarja `--chart-1…4` eikä treenipäivien värit | Päivävärit on valittu tunnistettavuuden, eivät datan erottelun mukaan; kaaviopaletti läpäisee ΔE- ja kontrastitarkistukset molemmissa teemoissa. |
+| Sarjarivillä paino ja toistot ovat allekkain | Kaksi askellinta rinnakkain ei mahdu 390 px:n ruudulle ilman että numerot kutistuvat lukukelvottomiksi (todettu kuvakaappauksesta). |
+| Komponenttigalleria rakennetaan vain kehitysajossa | Galleriassa on demoarvoja; tuotantonippuun ei jää mock-dataa. |
+| Näkymäsiirtymä on vain sisääntuloanimaatio | `AnimatePresence`-poistuma jätti näkymän `opacity: 0` -tilaan, jos reitti vaihtui ennen animaation loppua. |
+
 ## 8. Riskit
 
 | Riski | Hallinta |
