@@ -15,7 +15,8 @@
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
     "seed:demo": "node scripts/generate-test-data.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "screenshots:data": "node scripts/screenshots-seeded.mjs"
   },
   "dependencies": {
     "dexie": "^4.4.6",

@@ -118,14 +118,6 @@ export function AppRoutes() {
           }
         />
         <Route
-          path="onboarding"
-          element={
-            <Lazy>
-              <OnboardingScreen />
-            </Lazy>
-          }
-        />
-        <Route
           path="dev/gallery"
           element={
             <Lazy>
@@ -134,6 +126,16 @@ export function AppRoutes() {
           }
         />
       </Route>
+
+      {/* Käyttöönotto on oma koko ruudun kulku: ei alapalkkia eikä ajastinpalkkia. */}
+      <Route
+        path="/onboarding"
+        element={
+          <Lazy>
+            <OnboardingScreen />
+          </Lazy>
+        }
+      />
     </Routes>
   )
 }

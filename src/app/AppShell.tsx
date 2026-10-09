@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AnimatePresence, motion } from 'motion/react'
+import { motion } from 'motion/react'
 import { BottomNav } from '@/app/BottomNav'
 import { RestTimerBar } from '@/features/workout/RestTimerBar'
 import { getActiveSession } from '@/db/repositories/sessionRepo'
@@ -18,17 +18,20 @@ export function AppShell() {
   return (
     <div className="min-h-dvh bg-bg text-text">
       <main className={inWorkout ? 'pb-0' : 'pb-[calc(env(safe-area-inset-bottom,0px)+4.75rem)]'}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ type: 'spring', stiffness: 520, damping: 40, mass: 0.6 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        {/*
+          Näkymäsiirtymä on vain sisääntulo: avaimen vaihtuessa div korvautuu ja
+          animaatio alkaa alusta. AnimatePresencen exit-vaihetta ei käytetä,
+          koska keskeytynyt poistuma jätti näkymän opacity: 0 -tilaan, jos
+          reitti vaihtui ennen animaation loppua.
+        */}
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 520, damping: 40, mass: 0.6 }}
+        >
+          <Outlet />
+        </motion.div>
       </main>
 
       <RestTimerBar inWorkout={inWorkout} />
