@@ -21,6 +21,7 @@ import { ProgressRing } from '@/components/ui/ProgressRing'
 import { ScreenHeader } from '@/components/ui/ScreenHeader'
 import { ScreenSkeleton } from '@/components/ui/Skeleton'
 import { TextField } from '@/components/ui/TextField'
+import { MuscleMap } from '@/components/MuscleMap/MuscleMap'
 import { RangeBars } from '@/components/charts/RangeBars'
 import { StackedBarChart, type StackSeries } from '@/components/charts/StackedBarChart'
 import { AnalysisIcon, FlameIcon, SearchIcon, TrophyIcon } from '@/components/icons'
@@ -89,6 +90,12 @@ export default function OverviewScreen() {
       value: muscleCounts.get(id) ?? 0,
     }))
 
+    // Lämpökartan kuormitus 0–1 suhteessa ohjealueen ylärajaan.
+    const muscleIntensity: Partial<Record<MuscleId, number>> = {}
+    for (const [muscle, value] of muscleCounts) {
+      muscleIntensity[muscle] = Math.min(1, value / Math.max(1, settings.weeklySetsRange.max))
+    }
+
     const groupTotals = setsByMovementGroup(sets, exerciseMap)
     const volumeTotal = sets.reduce((sum, set) => sum + Math.max(0, set.weight) * set.reps, 0)
 
@@ -133,6 +140,7 @@ export default function OverviewScreen() {
       activeWeek,
       bars,
       muscleItems,
+      muscleIntensity,
       groupTotals,
       volumeTotal,
       recentRecords,
@@ -142,7 +150,16 @@ export default function OverviewScreen() {
       sessionCount: sessions.length,
       groupCount: groupSetsBySession(sets).length,
     }
-  }, [sessions, exercises, sets, now, from, selectedWeek, settings.weeklyTarget])
+  }, [
+    sessions,
+    exercises,
+    sets,
+    now,
+    from,
+    selectedWeek,
+    settings.weeklyTarget,
+    settings.weeklySetsRange,
+  ])
 
   if (data === null) return <ScreenSkeleton />
 
@@ -218,13 +235,17 @@ export default function OverviewScreen() {
           {data.muscleItems.length === 0 ? (
             <p className="mt-2 text-sm text-muted">Ei työsarjoja tällä viikolla.</p>
           ) : (
-            <div className="mt-3">
-              <RangeBars
-                items={data.muscleItems}
-                range={settings.weeklySetsRange}
-                formatValue={formatSets}
-                ariaLabel="Viikkosarjat lihasryhmittäin"
-              />
+            <div className="mt-3 flex gap-3">
+              {/* Lihaskartta kertoo yhdellä silmäyksellä, mikä jäi treenaamatta. */}
+              <MuscleMap view="both" intensity={data.muscleIntensity} className="w-24 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <RangeBars
+                  items={data.muscleItems}
+                  range={settings.weeklySetsRange}
+                  formatValue={formatSets}
+                  ariaLabel="Viikkosarjat lihasryhmittäin"
+                />
+              </div>
             </div>
           )}
         </Card>

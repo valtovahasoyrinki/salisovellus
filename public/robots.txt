@@ -1,0 +1,3 @@
+# Henkilökohtainen sovellus: ei indeksoitavaksi tarkoitettua sisältöä.
+User-agent: *
+Disallow: /

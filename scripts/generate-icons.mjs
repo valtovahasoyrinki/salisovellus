@@ -14,6 +14,13 @@ const TARGETS = [
   { source: 'maskable.svg', out: 'maskable-512.png', size: 512 },
 ]
 
+/*
+  iOS ei käytä manifestin tietoja käynnistyskuvaan, vaan vaatii oman
+  apple-touch-startup-image -kuvan laitteen tarkassa pikselikoossa.
+  Kohdelaite on iPhone 12 (390 × 844 @3x).
+*/
+const SPLASH = { out: 'splash-1170x2532.png', width: 1170, height: 2532, icon: 320 }
+
 const browser = await chromium.launch()
 try {
   for (const target of TARGETS) {
@@ -30,6 +37,20 @@ try {
     await page.close()
     console.log(`${target.out} (${target.size}px)`)
   }
+  const page = await browser.newPage({
+    viewport: { width: SPLASH.width, height: SPLASH.height },
+    deviceScaleFactor: 1,
+  })
+  const svg = await readFile(new URL('../public/icons/icon.svg', import.meta.url), 'utf8')
+  await page.setContent(
+    `<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:${SPLASH.height}px">` +
+      `<div style="width:${SPLASH.icon}px;height:${SPLASH.icon}px">${svg.replace(/width="512" height="512"/, `width="${SPLASH.icon}" height="${SPLASH.icon}"`)}</div>` +
+      '</body></html>',
+  )
+  const buffer = await page.screenshot()
+  await writeFile(new URL(`../public/icons/${SPLASH.out}`, import.meta.url), buffer)
+  await page.close()
+  console.log(`${SPLASH.out} (${SPLASH.width}×${SPLASH.height})`)
 } finally {
   await browser.close()
 }

@@ -67,7 +67,7 @@ export default function OnboardingScreen() {
         <ProgressBar progress={(step + 1) / STEP_COUNT} label={`Vaihe ${step + 1} / ${STEP_COUNT}`} />
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-28">
+      <main className="flex-1 overflow-y-auto px-5 pt-6 pb-28">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={step}
@@ -81,7 +81,7 @@ export default function OnboardingScreen() {
             {step === 2 ? <ExercisesStep days={days ?? []} /> : null}
           </motion.div>
         </AnimatePresence>
-      </div>
+      </main>
 
       <footer className="safe-bottom fixed inset-x-0 bottom-0 border-t border-border bg-bg/95 px-5 py-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-lg gap-2">
