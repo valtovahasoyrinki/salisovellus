@@ -235,17 +235,17 @@ export default function OverviewScreen() {
           {data.muscleItems.length === 0 ? (
             <p className="mt-2 text-sm text-muted">Ei työsarjoja tällä viikolla.</p>
           ) : (
-            <div className="mt-3 flex gap-3">
+            <div className="mt-3 space-y-4">
               {/* Lihaskartta kertoo yhdellä silmäyksellä, mikä jäi treenaamatta. */}
-              <MuscleMap view="both" intensity={data.muscleIntensity} className="w-24 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <RangeBars
-                  items={data.muscleItems}
-                  range={settings.weeklySetsRange}
-                  formatValue={formatSets}
-                  ariaLabel="Viikkosarjat lihasryhmittäin"
-                />
+              <div className="flex justify-center">
+                <MuscleMap view="both" intensity={data.muscleIntensity} className="w-44" />
               </div>
+              <RangeBars
+                items={data.muscleItems}
+                range={settings.weeklySetsRange}
+                formatValue={formatSets}
+                ariaLabel="Viikkosarjat lihasryhmittäin"
+              />
             </div>
           )}
         </Card>
