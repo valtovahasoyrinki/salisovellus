@@ -148,7 +148,7 @@ export function SetRow({
         {logged ? (
           <span
             className="flex size-12 shrink-0 items-center justify-center rounded-xl text-good"
-            aria-label="Sarja kirjattu"
+            aria-label={warmup ? 'Lämmittely kirjattu' : 'Sarja kirjattu'}
           >
             <motion.span
               initial={reduced ? false : { scale: 0.6, opacity: 0 }}
@@ -164,7 +164,7 @@ export function SetRow({
             onClick={onConfirm}
             whileTap={reduced ? undefined : { scale: 0.9 }}
             transition={{ type: 'spring', stiffness: 600, damping: 28 }}
-            aria-label={`Kuittaa ${label}`}
+            aria-label={warmup ? 'Kuittaa lämmittelysarja' : `Kuittaa sarja ${label}`}
             className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-ink"
           >
             <CheckIcon size={24} />

@@ -16,7 +16,7 @@ test('koko treeni kirjataan, päivitys kesken treenin ei hukkaa mitään', async
   const workoutUrl = page.url()
 
   // Ensimmäinen sarja: esitäytetty rivi kuitataan yhdellä napautuksella.
-  await page.getByRole('button', { name: 'Kuittaa 1' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa sarja 1' }).first().click()
   await expect(page.getByText(/^Lepo ·/)).toBeVisible()
   await expect(page.getByText('1/3 sarjaa').first()).toBeVisible()
 
@@ -25,7 +25,7 @@ test('koko treeni kirjataan, päivitys kesken treenin ei hukkaa mitään', async
   await page.getByRole('button', { name: 'Ohita' }).click()
   await expect(page.getByText(/^Lepo ·/)).toBeHidden()
 
-  await page.getByRole('button', { name: 'Kuittaa 2' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa sarja 2' }).first().click()
   await expect(page.getByText('2/3 sarjaa').first()).toBeVisible()
 
   // Sivun päivitys kesken treenin: kirjaukset säilyvät (autosave, SPEC §5).
@@ -35,7 +35,7 @@ test('koko treeni kirjataan, päivitys kesken treenin ei hukkaa mitään', async
 
   // Painon muuttaminen ja kolmas sarja.
   await page.getByRole('button', { name: 'Lisää: Paino kilogrammoina' }).first().click()
-  await page.getByRole('button', { name: 'Kuittaa 3' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa sarja 3' }).first().click()
   await expect(page.getByText('3/3 sarjaa').first()).toBeVisible()
 
   // Päätös ja yhteenveto.
@@ -54,7 +54,7 @@ test('koko treeni kirjataan, päivitys kesken treenin ei hukkaa mitään', async
 test('kesken jäänyt treeni palautuu kotinäkymästä', async ({ page }) => {
   await completeOnboarding(page, [['Push', ['Penkkipunnerrus']]])
   await page.getByRole('button', { name: /^Aloita Push/ }).click()
-  await page.getByRole('button', { name: 'Kuittaa 1' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa sarja 1' }).first().click()
 
   await page.goto('/#/')
   await expect(page.getByText('Treeni kesken')).toBeVisible()
@@ -67,9 +67,10 @@ test('lämmittelysarja ei näy työsarjojen laskennassa', async ({ page }) => {
   await completeOnboarding(page, [['Push', ['Penkkipunnerrus']]])
   await page.getByRole('button', { name: /^Aloita Push/ }).click()
 
-  // Napautus rivinumerossa merkitsee lämmittelyksi.
+  // Napautus rivinumerossa merkitsee lämmittelyksi, jolloin rivi ei enää vie
+  // työsarjan numeroa ja kuittausnappi nimetään lämmittelyksi.
   await page.getByRole('button', { name: /^1: merkitse lämmittelysarjaksi/ }).first().click()
-  await page.getByRole('button', { name: 'Kuittaa 1' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa lämmittelysarja' }).first().click()
 
   // Lämmittely ei kasvata työsarjalaskuria.
   await expect(page.getByText('0/3 sarjaa').first()).toBeVisible()

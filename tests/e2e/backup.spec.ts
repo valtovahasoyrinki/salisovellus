@@ -25,8 +25,8 @@ test('vienti ja tuonti säilyttävät datan identtisenä', async ({ page }) => {
 
   // Kirjataan treeni, jotta vietävää dataa on.
   await page.getByRole('button', { name: /^Aloita Push/ }).click()
-  await page.getByRole('button', { name: 'Kuittaa 1' }).first().click()
-  await page.getByRole('button', { name: 'Kuittaa 2' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa sarja 1' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa sarja 2' }).first().click()
   await page.getByRole('button', { name: 'Päätä', exact: true }).click()
   await page.getByRole('button', { name: 'Päätä treeni' }).click()
   await page.getByRole('button', { name: 'Valmis' }).click()

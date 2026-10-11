@@ -4,8 +4,8 @@ import { completeOnboarding } from './helpers'
 /** Kirjaa yhden treenin, jotta analyysille ja historialle on dataa. */
 async function logWorkout(page: Parameters<typeof completeOnboarding>[0]): Promise<void> {
   await page.getByRole('button', { name: /^Aloita Push/ }).click()
-  await page.getByRole('button', { name: 'Kuittaa 1' }).first().click()
-  await page.getByRole('button', { name: 'Kuittaa 2' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa sarja 1' }).first().click()
+  await page.getByRole('button', { name: 'Kuittaa sarja 2' }).first().click()
   await page.getByRole('button', { name: 'Päätä', exact: true }).click()
   await page.getByRole('button', { name: 'Päätä treeni' }).click()
   await expect(page).toHaveURL(/\/summary$/)
