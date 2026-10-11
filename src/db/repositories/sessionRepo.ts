@@ -307,20 +307,31 @@ export async function getPreviousSetsForExercise(
   return { sessionId: latest.sessionId, completedAt: latest.completedAt, sets: sessionSets }
 }
 
+/**
+ * Aikajärjestys, jossa samalla millisekunnilla kirjatut sarjat pysyvät
+ * järjestyksessään. Ilman toissijaista avainta indeksin palautusjärjestys
+ * ratkeaisi satunnaisen id-loppuosan mukaan.
+ */
+function byTimeThenOrder(a: SetEntry, b: SetEntry): number {
+  return a.completedAt - b.completedAt || a.order - b.order
+}
+
 /** Liikkeen koko historia aikajärjestyksessä, analyysin lähtödata. */
 export async function listSetsForExercise(
   exerciseId: string,
   from?: Timestamp,
 ): Promise<SetEntry[]> {
-  return db.setEntries
+  const sets = await db.setEntries
     .where('[exerciseId+completedAt]')
     .between([exerciseId, from ?? -Infinity], [exerciseId, Infinity])
     .toArray()
+  return sets.sort(byTimeThenOrder)
 }
 
 /** Kaikki sarjat aikavälillä (yleiskatsaus, viikkosarjat). */
 export async function listSetsBetween(from: Timestamp, to: Timestamp): Promise<SetEntry[]> {
-  return db.setEntries.where('completedAt').between(from, to, true, true).toArray()
+  const sets = await db.setEntries.where('completedAt').between(from, to, true, true).toArray()
+  return sets.sort(byTimeThenOrder)
 }
 
 export async function listAllSets(): Promise<SetEntry[]> {
