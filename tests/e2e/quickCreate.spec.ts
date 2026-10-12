@@ -40,6 +40,13 @@ test('kesken treenin luotu liike lisätään heti treeniin eikä kirjaus katkea'
   await expect(page.getByRole('dialog')).toBeHidden()
   await expect(page.getByRole('heading', { name: 'Pec dec', exact: true })).toBeVisible()
 
+  /*
+    Kierroksen vaatimus numero yksi: treeni ei katkea. Kuittaus käynnisti
+    lepoajastimen, ja sen on yhä käynnissä luonnin jälkeen – samoin kirjatun
+    sarjan on oltava tallella.
+  */
+  await expect(page.getByText(/^Lepo ·/)).toBeVisible()
+
   // Aiemmin kirjattu sarja on tallella ja uuteen liikkeeseen voi kirjata heti.
   await waitForScrollEnd(page)
   await card(page, 'Pec dec').getByRole('button', { name: 'Kuittaa sarja 1' }).click()
@@ -92,6 +99,33 @@ test('kaksoiskappalevaroitus tarjoaa olemassa olevaa liikettä', async ({ page }
   ).toBeVisible()
   // Kaksoiskappaletta ei syntynyt.
   await expect(page.getByRole('heading', { name: 'Peck deck' })).toBeHidden()
+})
+
+test('tuplanapautus tallennuksessa ei luo kahta liikettä', async ({ page }) => {
+  await completeOnboarding(page, [['Push', ['Penkkipunnerrus']]])
+  await page.getByRole('button', { name: /^Aloita Push/ }).click()
+
+  await openQuickForm(page, 'tuplaliike')
+  await tapMuscle(page, 'chest')
+
+  /*
+    Kolme napautusta **samassa tehtävässä**: näin React ei ehdi asettaa
+    painiketta `disabled`-tilaan napautusten välissä, ja testi mittaa oikeasti
+    lomakkeen salpaa eikä selaimen ajoitusta. Peräkkäiset Playwright-napautukset
+    menisivät läpi myös ilman salpaa.
+  */
+  await page
+    .getByRole('button', { name: 'Luo ja lisää treeniin' })
+    .evaluate((button: HTMLElement) => {
+      button.click()
+      button.click()
+      button.click()
+    })
+
+  await expect(page.getByRole('heading', { name: 'Tuplaliike' })).toBeVisible()
+  await page.goto('/#/exercises')
+  await page.getByPlaceholder('Esim. kyykky').fill('tuplaliike')
+  await expect(page.getByRole('link', { name: /Tuplaliike/ })).toHaveCount(1)
 })
 
 test('paneelin sulkeminen kesken lomakkeen ei luo liikettä', async ({ page }) => {

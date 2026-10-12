@@ -88,8 +88,8 @@ Jokainen vaihe on viety läpi samoilla porteilla: `typecheck`, `lint`, yksikköt
 | Mittari | Tulos |
 |---|---|
 | Yksikkötestit | 353 testiä, 26 tiedostoa |
-| E2E-testit | 30 testiä × 2 laiteprofiilia (iPhone 12, Pixel 5) = 60 ajoa |
-| Lighthouse (mobiili) | Performance 100, Accessibility 100, Best Practices 100 |
+| E2E-testit | 31 testiä × 2 laiteprofiilia (iPhone 12, Pixel 5) = 62 ajoa |
+| Lighthouse (mobiili) | Accessibility 100, Best Practices 100, Performance 82–83 paikallisella `vite preview` -palvelimella (HTTP/1.1). Sama mittaus versiosta 1.0 antaa 85: ero tulee seitsemästä uudesta nipusta, jotka paikallinen palvelin lataa jonossa. Ks. PLAN.md 9.11. |
 | Suorituskyky | 3 vuotta dataa (624 treeniä, 17 056 sarjaa): koti 58 ms, analyysi ja historia alle 1 s |
 | Kontrastit | Kaikki käytössä olevat teksti/pinta-parit ≥ 4,5:1 molemmissa teemoissa |
 

@@ -418,3 +418,11 @@ Jätettiin korjaamatta (kirjattu tietoisesti):
 - Lihasryhmien nimet ("etureisi") eivät ole hakusanoja. Lihasryhmäsuodatin tekee
   saman rajauksen yhdellä napautuksella, eikä nimien lisääminen aliaksiksi olisi
   hakuosuma vaan suodatus.
+
+### 9.13 Manager-kierroksen korjaukset
+
+| Löydös | Korjaus |
+|---|---|
+| **Lint-portti oli punainen committoidussa puussa** (`no-shadow` E2E-apurissa): edellinen commit tehtiin ajamatta `npm run lint` uudelleen, eli CLAUDE.md:n committikohtainen portti olisi katkennut. | Muuttuja nimetty uudelleen; portti ajetaan jatkossa kokonaan (`npx oxlint` ilman polkurajausta) ennen committia. |
+| **README väitti Lighthouse Performance 100**, kun saman kierroksen mittaus antaa 82–83. | Rivi korvattu mitatuilla luvuilla ja viittauksella osioon 9.11. |
+| **"Treeni ei katkea" oli kierroksen päävaatimus ilman testiä**: lepoajastimen jatkuminen ja tuplanapautuksen salpa oli varmistettu vain käsin. | E2E tarkistaa nyt, että lepoajastin on yhä käynnissä luonnin jälkeen, ja oma testi napauttaa tallennusta kolme kertaa **samassa tehtävässä**. Jälkimmäinen todettiin aidoksi: salvan poisto kaataa testin (kolme liikettä) ja palautus korjaa sen. |

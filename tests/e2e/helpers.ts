@@ -74,10 +74,10 @@ export async function tapMuscle(page: Page, muscle: string, mirrored = false): P
     const siblings = [
       ...(path.parentElement?.querySelectorAll('[data-muscle]') ?? []),
     ] as SVGGeometryElement[]
-    const muscle = path.getAttribute('data-muscle')
+    const own = path.getAttribute('data-muscle')
     const above = siblings
       .slice(siblings.indexOf(path) + 1)
-      .filter((other) => other.getAttribute('data-muscle') !== muscle)
+      .filter((other) => other.getAttribute('data-muscle') !== own)
 
     const box = path.getBBox()
     const fractions = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.1, 0.9]
