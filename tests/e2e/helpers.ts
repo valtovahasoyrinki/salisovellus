@@ -44,3 +44,43 @@ export async function resetDatabase(page: Page): Promise<void> {
   })
   await page.reload()
 }
+
+/**
+ * Napauttaa lihasmuodon keskikohtaa lihaskartalla.
+ *
+ * `scrollIntoViewIfNeeded` odottaa, että elementti on näkyvä ja vakaa (paneelin
+ * jousianimaatio on ohi), ja napautus tehdään hiirellä laskettuun pisteeseen:
+ * osuma lasketaan tarkoituksella SVG-juuressa koordinaateista, joten
+ * päällimmäinen muoto (esim. lähentäjät etureiden päällä) ei saa estää
+ * napautusta niin kuin Playwrightin oma osumatarkistus tekisi.
+ */
+export async function tapMuscle(page: Page, muscle: string): Promise<void> {
+  const shape = page.locator(`[data-muscle="${muscle}"]`).first()
+  await shape.scrollIntoViewIfNeeded()
+  const box = await shape.boundingBox()
+  if (box === null) throw new Error(`Lihasmuotoa ${muscle} ei löytynyt kartalta`)
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+}
+
+/** Vaihtaa lihaskartan takanäkymään (selkä, pakarat, takareidet). */
+export async function showBackView(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: 'Takaa' }).click()
+}
+
+/**
+ * Odottaa, että sileä vieritys on päättynyt: kesken treenin luotu liike
+ * vieritetään näkyviin, ja Playwright voi ehtiä napauttaa vanhaan kohtaan,
+ * koska vieritysanimaation alussa kaksi peräkkäistä ruudunpäivitystä voivat
+ * näyttää samalta. Tämä odottaa oikeaa signaalia eikä kiinteää viivettä.
+ */
+export async function waitForScrollEnd(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      new Promise<boolean>((resolve) => {
+        const start = window.scrollY
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => resolve(Math.abs(window.scrollY - start) < 1)),
+        )
+      }),
+  )
+}

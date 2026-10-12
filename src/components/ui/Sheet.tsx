@@ -1,5 +1,7 @@
 import { useEffect, useId } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
+import { IconButton } from '@/components/ui/Button'
+import { ChevronLeftIcon } from '@/components/icons'
 
 /**
  * Bottom sheet jousifysiikalla (SPEC §7). Avautuu alareunasta, koska
@@ -12,9 +14,14 @@ export interface SheetProps {
   children: React.ReactNode
   /** Korkeampi lomake tarvitsee enemmän tilaa kuin lyhyt valintalista. */
   size?: 'auto' | 'tall'
+  /**
+   * Paluu paneelin sisällä: kun paneeli vaihtaa näkymää (haku → uuden liikkeen
+   * lomake), reitti ei muutu, joten takaisin-nuoli kuuluu otsikkoriviin.
+   */
+  onBack?: () => void
 }
 
-export function Sheet({ open, onClose, title, children, size = 'auto' }: SheetProps) {
+export function Sheet({ open, onClose, title, children, size = 'auto', onBack }: SheetProps) {
   const titleId = useId()
 
   useEffect(() => {
@@ -63,9 +70,16 @@ export function Sheet({ open, onClose, title, children, size = 'auto' }: SheetPr
             <div className="flex items-center justify-center pt-2.5">
               <span className="h-1 w-10 rounded-full bg-border-strong" />
             </div>
-            <h2 id={titleId} className="px-5 pt-2 pb-3 text-base font-semibold">
-              {title}
-            </h2>
+            <div className="flex items-center gap-1 px-5 pt-2 pb-3">
+              {onBack ? (
+                <IconButton label="Takaisin hakuun" className="-ml-2" onClick={onBack}>
+                  <ChevronLeftIcon />
+                </IconButton>
+              ) : null}
+              <h2 id={titleId} className="min-w-0 flex-1 truncate text-base font-semibold">
+                {title}
+              </h2>
+            </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">{children}</div>
           </motion.div>
         </div>

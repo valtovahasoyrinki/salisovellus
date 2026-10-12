@@ -4,6 +4,10 @@ Henkilökohtainen salitreenipäiväkirja ja kehitysanalyysi. Asennettava PWA: to
 
 Ydin: sarjojen kirjaus sekunneissa salilla → kehityskäyrät ja sääntöpohjainen analyysi.
 
+Versio 1.1: liikekirjastossa 125 liikettä, haku löytää liikkeet myös englanniksi ja salislangilla
+("pec dec", "rdl", "lat pulldown"), lihakset valitaan napauttamalla lihaskarttaa, ja oman liikkeen
+voi luoda suoraan hakutuloksista – myös kesken treenin, kirjausnäkymästä poistumatta.
+
 ## Käynnistys paikallisesti
 
 Vaatii Node 22 tai uudemman.
@@ -23,6 +27,7 @@ npm run test:e2e     # Playwright, iPhone 12 + Pixel 5 -emulaatio
 npm run build        # tuotantonippu dist/-kansioon
 npm run preview      # tuotantonipun esikatselu portissa 4173
 npm run screenshots  # kuvakaappaukset tyhjästä sovelluksesta (vaatii preview-palvelimen)
+npm run screenshots:flow  # kuvakaappaukset pikaluonnin poluista
 npm run screenshots:data  # kuvakaappaukset oikealla datalla (vaatii dev-palvelimen portissa 5174)
 npm run icons        # rasteroi sovellusikonit ja iOS:n käynnistyskuvan
 npm run seed:demo    # generoi 3 vuoden testidatan tiedostoon testdata/
@@ -82,8 +87,8 @@ Jokainen vaihe on viety läpi samoilla porteilla: `typecheck`, `lint`, yksikköt
 
 | Mittari | Tulos |
 |---|---|
-| Yksikkötestit | 232 testiä, 22 tiedostoa |
-| E2E-testit | 28 testiä, iPhone 12 ja Pixel 5 -profiilit |
+| Yksikkötestit | 353 testiä, 26 tiedostoa |
+| E2E-testit | 30 testiä × 2 laiteprofiilia (iPhone 12, Pixel 5) = 60 ajoa |
 | Lighthouse (mobiili) | Performance 100, Accessibility 100, Best Practices 100 |
 | Suorituskyky | 3 vuotta dataa (624 treeniä, 17 056 sarjaa): koti 58 ms, analyysi ja historia alle 1 s |
 | Kontrastit | Kaikki käytössä olevat teksti/pinta-parit ≥ 4,5:1 molemmissa teemoissa |

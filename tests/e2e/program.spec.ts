@@ -81,7 +81,9 @@ test('oman liikkeen luonti validoi nimen', async ({ page }) => {
   await expect(dialog.getByText('Samanniminen liike on jo olemassa')).toBeVisible()
 
   await dialog.getByLabel('Nimi').fill('Oma erikoisliike')
-  await dialog.getByRole('button', { name: /^Rinta/ }).first().click()
+  // Lihakset valitaan kartalta; tekstilista on varapolku saman säännön takana.
+  await dialog.getByRole('button', { name: /Valitse listasta/ }).click()
+  await dialog.getByRole('button', { name: 'Rinta', exact: true }).first().click()
   await dialog.getByRole('button', { name: 'Luo liike' }).click()
   await expect(page.getByRole('heading', { name: 'Oma erikoisliike', level: 1 })).toBeVisible()
 })

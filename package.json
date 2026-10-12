@@ -1,7 +1,7 @@
 {
   "name": "salisovellus",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,8 @@
     "icons": "node scripts/generate-icons.mjs",
     "seed:demo": "node scripts/generate-test-data.mjs",
     "screenshots": "node scripts/screenshots.mjs",
-    "screenshots:data": "node scripts/screenshots-seeded.mjs"
+    "screenshots:data": "node scripts/screenshots-seeded.mjs",
+    "screenshots:flow": "node scripts/screenshots-flow.mjs"
   },
   "dependencies": {
     "dexie": "^4.4.6",

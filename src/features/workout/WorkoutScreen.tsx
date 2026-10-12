@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useReducedMotion } from 'motion/react'
 import { addExerciseToDay, listDayExercises } from '@/db/repositories/programRepo'
 import {
   addExerciseToSession,
@@ -22,8 +23,9 @@ import { CloseIcon, DumbbellIcon, PlusIcon, SwapIcon } from '@/components/icons'
 import { useRestTimer } from '@/app/providers/RestTimerProvider'
 import { useToast } from '@/app/providers/ToastProvider'
 import { useSettings } from '@/app/useSettings'
-import { ExercisePicker } from '@/features/exercises/ExercisePicker'
+import { ExercisePickerSheet } from '@/features/exercises/ExercisePickerSheet'
 import { formatClock } from '@/lib/date'
+import { scrollIntoViewWhenReady } from '@/lib/scroll'
 import { disableWakeLock, enableWakeLock } from '@/lib/wakeLock'
 import { useNow } from '@/lib/useNow'
 import { ExerciseCard, recordToastText } from './ExerciseCard'
@@ -35,6 +37,7 @@ export function WorkoutScreen() {
   const restTimer = useRestTimer()
   const settings = useSettings()
   const now = useNow(1000)
+  const reducedMotion = useReducedMotion()
 
   const detail = useLiveQuery(
     async () => (await getSessionDetail(sessionId)) ?? null,
@@ -106,6 +109,23 @@ export function WorkoutScreen() {
 
   const elapsedSec = Math.max(0, (now - detail.session.startedAt) / 1000)
 
+  /*
+    Liikkeen lisäys treeniin (valittu tai juuri luotu). Kirjatut sarjat ja
+    käynnissä oleva lepoajastin eivät muutu: tämä vain lisää uuden rivin.
+  */
+  const addToWorkout = (exercise: Exercise, message: string): void => {
+    void addExerciseToSession(sessionId, exercise.id).then(() => {
+      toast.show(`${exercise.name} ${message}`, { tone: 'good' })
+      scrollIntoViewWhenReady(`liike-${exercise.id}`, !reducedMotion)
+    })
+    if (addToProgram && dayId !== undefined) {
+      void addExerciseToDay(dayId, exercise.id, {
+        targetSets: 3,
+        repRange: exercise.defaultRepRange,
+      })
+    }
+  }
+
   return (
     <div className="min-h-dvh pb-40">
       <header className="safe-top sticky top-0 z-30 border-b border-border bg-bg/90 px-3 backdrop-blur-xl">
@@ -146,6 +166,7 @@ export function WorkoutScreen() {
               row={item.row}
               sets={item.sets}
               sessionId={sessionId}
+              domId={`liike-${item.exercise.id}`}
               {...(targetsByExercise.get(item.exercise.id)
                 ? { dayExercise: targetsByExercise.get(item.exercise.id) }
                 : {})}
@@ -175,32 +196,27 @@ export function WorkoutScreen() {
         </div>
       </div>
 
-      <Sheet open={adding} onClose={() => setAdding(false)} title="Lisää liike" size="tall">
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-3 py-2.5">
-          <span className="text-sm">Lisää myös ohjelmaan</span>
-          <Toggle
-            checked={addToProgram}
-            onChange={setAddToProgram}
-            label="Lisää liike myös ohjelman treenipäivään"
-            disabled={dayId === undefined}
-          />
-        </div>
-        <ExercisePicker
-          multiple
-          selectedIds={new Set(detail.exercises.map((item) => item.exercise.id))}
-          onPick={(exercise: Exercise) => {
-            void addExerciseToSession(sessionId, exercise.id).then(() => {
-              toast.show(`${exercise.name} lisätty treeniin`, { tone: 'good' })
-            })
-            if (addToProgram && dayId !== undefined) {
-              void addExerciseToDay(dayId, exercise.id, {
-                targetSets: 3,
-                repRange: exercise.defaultRepRange,
-              })
-            }
-          }}
-        />
-      </Sheet>
+      <ExercisePickerSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="Lisää liike"
+        createLabel="Luo ja lisää treeniin"
+        multiple
+        selectedIds={new Set(detail.exercises.map((item) => item.exercise.id))}
+        header={
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-3 py-2.5">
+            <span className="text-sm">Lisää myös ohjelmaan</span>
+            <Toggle
+              checked={addToProgram}
+              onChange={setAddToProgram}
+              label="Lisää liike myös ohjelman treenipäivään"
+              disabled={dayId === undefined}
+            />
+          </div>
+        }
+        onPick={(exercise: Exercise) => addToWorkout(exercise, 'lisätty treeniin')}
+        onCreated={(exercise: Exercise) => addToWorkout(exercise, 'luotu ja lisätty treeniin')}
+      />
 
       <Sheet open={reordering} onClose={() => setReordering(false)} title="Liikkeiden järjestys">
         <DragList

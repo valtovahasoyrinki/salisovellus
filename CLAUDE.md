@@ -17,6 +17,7 @@ npm run build        # vite build (tuottaa dist/)
 npm run preview      # tuotantonipun esikatselu
 npm run screenshots  # kuvakaappaukset tyhjästä sovelluksesta (preview-palvelin)
 npm run screenshots:data  # kuvakaappaukset oikealla datalla (dev-palvelin portissa 5174)
+npm run screenshots:flow  # kuvakaappaukset pikaluonnin poluista (preview-palvelin)
 npm run icons        # rasteroi sovellusikonit ja iOS:n käynnistyskuvan
 npm run seed:demo    # generoi 3 vuoden testidatan tiedostoon testdata/
 ```

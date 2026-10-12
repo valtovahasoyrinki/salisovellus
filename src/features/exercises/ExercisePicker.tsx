@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { filterExercises, listExercises } from '@/db/repositories/exerciseRepo'
+import { listExercises } from '@/db/repositories/exerciseRepo'
+import { findExercises } from '@/domain/exerciseSearch'
 import { MUSCLE_ORDER, muscleLabel } from '@/domain/muscles'
 import { equipmentLabel } from '@/domain/equipment'
 import type { Exercise, MuscleId } from '@/domain/types'
+import { Button } from '@/components/ui/Button'
 import { Chip, ChipRow } from '@/components/ui/Chip'
 import { ListRow } from '@/components/ui/ListRow'
 import { TextField } from '@/components/ui/TextField'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Badge } from '@/components/ui/Badge'
-import { CheckIcon, SearchIcon, equipmentIcon } from '@/components/icons'
+import { CheckIcon, PlusIcon, SearchIcon, equipmentIcon } from '@/components/icons'
 
 /**
  * Liikkeen valinta haulla ja lihasryhmäsuodatuksella (SPEC §6.1, §6.2).
@@ -25,6 +27,12 @@ export interface ExercisePickerProps {
   /** Liikkeet, joita ei näytetä lainkaan (esim. jo päivässä olevat). */
   excludeIds?: ReadonlySet<string>
   emptyHint?: string
+  /**
+   * Pikaluonti hakusanasta (SPEC §6.2). Kun tämä on annettu, hakutulosten
+   * perässä on aina luontirivi – myös silloin kun osumia löytyi, koska oma
+   * liike voi olla eri kuin samannimiset kirjaston liikkeet.
+   */
+  onCreate?: (name: string) => void
 }
 
 export function ExercisePicker({
@@ -33,6 +41,7 @@ export function ExercisePicker({
   multiple = false,
   excludeIds,
   emptyHint,
+  onCreate,
 }: ExercisePickerProps) {
   const [query, setQuery] = useState('')
   const [muscle, setMuscle] = useState<MuscleId | 'all'>('all')
@@ -52,9 +61,23 @@ export function ExercisePicker({
   }, [available])
 
   const results = useMemo(
-    () => filterExercises(available, query, muscle),
+    () => findExercises(available, query, muscle),
     [available, query, muscle],
   )
+
+  const draftName = query.trim()
+  const createRow =
+    onCreate === undefined || draftName === '' ? null : (
+      <li>
+        <ListRow
+          title={`Luo uusi liike: ”${draftName}”`}
+          subtitle="Nimi, lihakset ja väline – loput oletuksina"
+          leading={<PlusIcon size={20} />}
+          trailing={<span className="text-sm text-muted">Luo</span>}
+          onClick={() => onCreate(draftName)}
+        />
+      </li>
+    )
 
   return (
     <div className="space-y-3">
@@ -83,19 +106,34 @@ export function ExercisePicker({
       {results.length === 0 ? (
         <EmptyState
           title="Ei osumia"
-          description={emptyHint ?? 'Kokeile toista hakusanaa tai luo uusi liike kirjastossa.'}
+          description={
+            onCreate === undefined
+              ? (emptyHint ?? 'Kokeile toista hakusanaa tai luo uusi liike kirjastossa.')
+              : `Kirjastossa ei ole liikettä${draftName === '' ? '' : ` ”${draftName}”`}. Luo se tästä – nimi, lihakset ja väline riittävät.`
+          }
           icon={<SearchIcon size={28} />}
+          action={
+            onCreate === undefined ? undefined : (
+              <Button
+                variant="primary"
+                icon={<PlusIcon size={18} />}
+                onClick={() => onCreate(draftName)}
+              >
+                Luo uusi liike
+              </Button>
+            )
+          }
         />
       ) : (
         <ul className="divide-y divide-border">
-          {results.map((exercise) => {
+          {results.map(({ exercise, aliasHit }) => {
             const selected = selectedIds?.has(exercise.id) ?? false
             const EquipmentIcon = equipmentIcon(exercise.equipment)
             return (
               <li key={exercise.id}>
                 <ListRow
                   title={exercise.name}
-                  subtitle={`${exercise.primaryMuscles.map(muscleLabel).join(', ')} · ${equipmentLabel(exercise.equipment)}`}
+                  subtitle={`${exercise.primaryMuscles.map(muscleLabel).join(', ')} · ${equipmentLabel(exercise.equipment)}${aliasHit === undefined ? '' : ` · myös: ${aliasHit}`}`}
                   leading={
                     <span className="text-muted">
                       <EquipmentIcon size={22} />
@@ -117,6 +155,7 @@ export function ExercisePicker({
               </li>
             )
           })}
+          {createRow}
         </ul>
       )}
     </div>

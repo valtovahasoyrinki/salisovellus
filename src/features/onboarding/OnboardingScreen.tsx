@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
-import { seedExerciseLibrary } from '@/db/seed/seedLibrary'
+import { syncExerciseLibrary } from '@/db/seed/seedLibrary'
 import {
   addExerciseToDay,
   createDay,
@@ -22,7 +22,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Sheet } from '@/components/ui/Sheet'
 import { TextField } from '@/components/ui/TextField'
 import { CheckIcon, DumbbellIcon, PlusIcon, TrashIcon, dayIcon } from '@/components/icons'
-import { ExercisePicker } from '@/features/exercises/ExercisePicker'
+import { ExercisePickerSheet } from '@/features/exercises/ExercisePickerSheet'
 
 type Step = 0 | 1 | 2
 
@@ -33,7 +33,7 @@ const STEP_COUNT = 3
  * ruudusta eteenpäin – myös silloin kun hän ohittaa loput.
  */
 async function prepare(): Promise<void> {
-  await seedExerciseLibrary()
+  await syncExerciseLibrary()
   await ensureProgram()
 }
 
@@ -239,6 +239,13 @@ function ExercisesStep({ days }: { days: WorkoutDay[] }) {
     [],
   )
 
+  const addToDay = (exercise: Exercise): void => {
+    void addExerciseToDay(dayId, exercise.id, {
+      targetSets: 3,
+      repRange: exercise.defaultRepRange,
+    })
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -302,18 +309,16 @@ function ExercisesStep({ days }: { days: WorkoutDay[] }) {
         Lisää liike
       </Button>
 
-      <Sheet open={picking} onClose={() => setPicking(false)} title="Lisää liike" size="tall">
-        <ExercisePicker
-          multiple
-          selectedIds={new Set(rows.map((item) => item.exercise.id))}
-          onPick={(exercise: Exercise) => {
-            void addExerciseToDay(dayId, exercise.id, {
-              targetSets: 3,
-              repRange: exercise.defaultRepRange,
-            })
-          }}
-        />
-      </Sheet>
+      <ExercisePickerSheet
+        open={picking}
+        onClose={() => setPicking(false)}
+        title="Lisää liike"
+        createLabel="Luo ja lisää päivään"
+        multiple
+        selectedIds={new Set(rows.map((item) => item.exercise.id))}
+        onPick={addToDay}
+        onCreated={addToDay}
+      />
     </div>
   )
 }

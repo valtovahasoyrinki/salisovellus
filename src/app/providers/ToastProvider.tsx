@@ -82,7 +82,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.98 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-              className="pointer-events-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm shadow-[var(--shadow-float)]"
+              /*
+                Ilmoitus ei ota napautuksia vastaan: vain mahdollinen
+                toimintopainike on klikattava. Muuten ilmoitus peittäisi sen
+                alla olevan käyttöliittymän – esimerkiksi ennätysilmoitus osui
+                lihaskartan päälle 360 px leveällä ruudulla.
+              */
+              className="pointer-events-none flex w-full max-w-sm items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm shadow-[var(--shadow-float)]"
             >
               <span
                 className={
@@ -98,7 +104,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               {toast.action ? (
                 <button
                   type="button"
-                  className="min-h-11 shrink-0 rounded-lg px-3 font-semibold text-accent"
+                  className="pointer-events-auto min-h-11 shrink-0 rounded-lg px-3 font-semibold text-accent"
                   onClick={() => {
                     toast.action?.onAction()
                     dismiss(toast.id)

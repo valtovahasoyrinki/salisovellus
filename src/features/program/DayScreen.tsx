@@ -25,6 +25,7 @@ import { SwipeRow } from '@/components/ui/SwipeRow'
 import { ChevronRightIcon, DumbbellIcon, PlusIcon, SwapIcon } from '@/components/icons'
 import { useToast } from '@/app/providers/ToastProvider'
 import { ExercisePicker } from '@/features/exercises/ExercisePicker'
+import { ExercisePickerSheet } from '@/features/exercises/ExercisePickerSheet'
 import { ExerciseThumb } from '@/features/exercises/ExerciseThumb'
 import { formatRepRange } from '@/lib/format'
 
@@ -50,6 +51,14 @@ export default function DayScreen() {
   const [adding, setAdding] = useState(false)
   const [swapping, setSwapping] = useState<DayExerciseWithExercise | null>(null)
   const [settingsFor, setSettingsFor] = useState<DayExerciseWithExercise | null>(null)
+
+  /** Liikkeen lisäys päivään, valittuna tai juuri luotuna. */
+  const addToDay = (exercise: Exercise, message: string): void => {
+    void addExerciseToDay(dayId, exercise.id, {
+      targetSets: 3,
+      repRange: exercise.defaultRepRange,
+    }).then(() => toast.show(`${exercise.name} ${message}`, { tone: 'good' }))
+  }
 
   if (day === undefined || rows === undefined) return <ScreenSkeleton />
   if (day === null) {
@@ -147,19 +156,16 @@ export default function DayScreen() {
         )}
       </div>
 
-      <Sheet open={adding} onClose={() => setAdding(false)} title="Lisää liike päivään" size="tall">
-        <ExercisePicker
-          multiple
-          selectedIds={new Set(rows.map((item) => item.exercise.id))}
-          onPick={(exercise: Exercise) => {
-            void addExerciseToDay(dayId, exercise.id, {
-              targetSets: 3,
-              repRange: exercise.defaultRepRange,
-            }).then(() => toast.show(`${exercise.name} lisätty`, { tone: 'good' }))
-          }}
-          emptyHint="Luo uusi liike liikekirjastossa."
-        />
-      </Sheet>
+      <ExercisePickerSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="Lisää liike päivään"
+        createLabel="Luo ja lisää päivään"
+        multiple
+        selectedIds={new Set(rows.map((item) => item.exercise.id))}
+        onPick={(exercise: Exercise) => addToDay(exercise, 'lisätty')}
+        onCreated={(exercise: Exercise) => addToDay(exercise, 'luotu ja lisätty päivään')}
+      />
 
       <Sheet
         open={swapping !== null}

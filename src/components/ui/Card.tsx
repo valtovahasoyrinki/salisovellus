@@ -4,13 +4,16 @@ export function Card({
   children,
   className = '',
   as: Tag = 'div',
+  id,
 }: {
   children: ReactNode
   className?: string
   as?: 'div' | 'section' | 'article' | 'li'
+  /** Ankkuri vierittämiseen (esim. kesken treenin luotu liikekortti). */
+  id?: string
 }) {
   return (
-    <Tag className={`rounded-[var(--radius-card)] border border-border bg-surface-1 ${className}`}>
+    <Tag id={id} className={`rounded-[var(--radius-card)] border border-border bg-surface-1 ${className}`}>
       {children}
     </Tag>
   )

@@ -33,6 +33,8 @@ export interface ExerciseCardProps {
   dayExercise?: DayExercise
   fallbackRestSec: number
   onRecords: (exerciseName: string, kinds: string[]) => void
+  /** DOM-ankkuri: treenin aikana luotu liike vieritetään näkyviin. */
+  domId?: string
 }
 
 interface RowEdit {
@@ -51,6 +53,7 @@ export function ExerciseCard({
   dayExercise,
   fallbackRestSec,
   onRecords,
+  domId,
 }: ExerciseCardProps) {
   const navigate = useNavigate()
   const toast = useToast()
@@ -196,7 +199,7 @@ export function ExerciseCard({
   }
 
   return (
-    <Card as="li" className="overflow-hidden">
+    <Card as="li" id={domId} className="overflow-hidden">
       <div className="flex items-start gap-2 px-3 pt-3">
         <span className="num mt-1 w-5 shrink-0 text-center text-sm text-faint">{index + 1}</span>
         <div className="min-w-0 flex-1">

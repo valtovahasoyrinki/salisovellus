@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { EQUIPMENT_ORDER, EXERCISE_KIND_LABELS, equipmentLabel } from '@/domain/equipment'
-import { MUSCLE_ORDER, muscleLabel } from '@/domain/muscles'
-import type { Equipment, ExerciseKind, MuscleId } from '@/domain/types'
+import type { Equipment, ExerciseKind } from '@/domain/types'
+import { MuscleSelector } from '@/components/MuscleMap/MuscleSelector'
 import { Button } from '@/components/ui/Button'
 import { Chip, ChipRow } from '@/components/ui/Chip'
 import { NumberStepper } from '@/components/ui/NumberStepper'
@@ -40,20 +40,6 @@ export function ExerciseForm({
     setValues((current) => ({ ...current, [key]: value }))
   }
 
-  const toggleMuscle = (field: 'primaryMuscles' | 'secondaryMuscles', id: MuscleId): void => {
-    setValues((current) => {
-      const selected = current[field].includes(id)
-      const next = selected ? current[field].filter((item) => item !== id) : [...current[field], id]
-      // Sama lihas ei voi olla sekä ensisijainen että toissijainen.
-      const other = field === 'primaryMuscles' ? 'secondaryMuscles' : 'primaryMuscles'
-      return {
-        ...current,
-        [field]: next,
-        [other]: selected ? current[other] : current[other].filter((item) => item !== id),
-      }
-    })
-  }
-
   const submit = async (): Promise<void> => {
     const result = validateExerciseForm(values, existingNames, editingId)
     if (!result.ok) {
@@ -90,34 +76,18 @@ export function ExerciseForm({
       />
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-text">Ensisijaiset lihasryhmät</legend>
-        {errors.primaryMuscles ? (
-          <p className="text-xs text-danger">{errors.primaryMuscles}</p>
-        ) : null}
-        <ChipRow label="Ensisijaiset lihasryhmät">
-          {MUSCLE_ORDER.map((id) => (
-            <Chip
-              key={id}
-              label={muscleLabel(id)}
-              selected={values.primaryMuscles.includes(id)}
-              onClick={() => toggleMuscle('primaryMuscles', id)}
-            />
-          ))}
-        </ChipRow>
-      </fieldset>
-
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-text">Toissijaiset lihasryhmät</legend>
-        <ChipRow label="Toissijaiset lihasryhmät">
-          {MUSCLE_ORDER.map((id) => (
-            <Chip
-              key={id}
-              label={muscleLabel(id)}
-              selected={values.secondaryMuscles.includes(id)}
-              onClick={() => toggleMuscle('secondaryMuscles', id)}
-            />
-          ))}
-        </ChipRow>
+        <legend className="mb-1 text-sm font-medium text-text">Lihakset</legend>
+        <MuscleSelector
+          value={{ primary: values.primaryMuscles, secondary: values.secondaryMuscles }}
+          onChange={(next) =>
+            setValues((current) => ({
+              ...current,
+              primaryMuscles: next.primary,
+              secondaryMuscles: next.secondary,
+            }))
+          }
+          error={errors.primaryMuscles}
+        />
       </fieldset>
 
       <fieldset className="space-y-2">
