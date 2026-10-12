@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useToast } from '@/app/providers/ToastProvider'
 import { MuscleMap } from '@/components/MuscleMap/MuscleMap'
+import { MuscleSelector, type MuscleSelection } from '@/components/MuscleMap/MuscleSelector'
 import {
   ArchiveIcon,
   BarbellIcon,
@@ -124,6 +125,10 @@ export default function ComponentGallery() {
   const [name, setName] = useState('Penkkipunnerrus')
   const [note, setNote] = useState('')
   const [muscleFilter, setMuscleFilter] = useState<string[]>(['chest'])
+  const [muscles, setMuscles] = useState<MuscleSelection>({
+    primary: ['chest'],
+    secondary: ['front_delts', 'triceps'],
+  })
   const [exercises, setExercises] = useState(DEMO_EXERCISES)
   const [sets, setSets] = useState([1, 2, 3])
   const toggleFilter = (id: string): void => {
@@ -404,6 +409,19 @@ export default function ComponentGallery() {
               />
             </div>
           </Card>
+        </Section>
+
+        <Section
+          title="Lihasten valinta: MuscleSelector"
+          note="Napautus kiertää: ei valittu → ensisijainen → toissijainen → ei valittu"
+        >
+          <MuscleSelector
+            value={muscles}
+            onChange={setMuscles}
+            error={
+              muscles.primary.length === 0 ? 'Valitse vähintään yksi ensisijainen lihas' : undefined
+            }
+          />
         </Section>
 
         <Section title="Ikonit: treenipäivät">
