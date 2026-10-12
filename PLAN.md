@@ -218,3 +218,139 @@ Kirjattu, koska etenin ilman erillistä kysymystä:
 | iOS: Safari voi tyhjentää IndexedDB:n | `navigator.storage.persist()`, tila asetuksissa, varmuuskopiomuistutus 14 vrk (§6.10) |
 | Suorituskyky 15 000 sarjalla | Compound-indeksit, muistiin välimuistitettu liikekohtainen aggregaatti, desimointi, virtualisoidut listat |
 | Service worker vaatii HTTPS puhelintestauksessa | Vite `--host` + HTTPS-tunneli tai preview-julkaisu; ohjeet README:ssä (§4) |
+
+---
+
+## 9. Korjauskierros 1 – omat liikkeet ja laajempi liikekirjasto
+
+Lähtökohta: `KORJAUS_1_PROMPT.md` (versio 1.0 = commit `3fafee8`). Kolme korjausta: pikaluonti
+kaikkialle missä liike valitaan, lihaskartta valitsimeksi ja liikekirjasto + haku salinimillä.
+
+### 9.1 Tietomalli ja migraatio
+
+| Muutos | Yksityiskohdat |
+|---|---|
+| `Exercise.aliases?: string[]` | Hakusanat, ei näytetä nimenä. Valinnainen → vanhat rivit kelpaavat sellaisenaan. |
+| `db.version(2)` | Taulut ja indeksit identtiset v1:n kanssa (aliaksia **ei** indeksoida: haku tapahtuu muistissa, koko kirjasto on jo ladattu `useLiveQuery`-kyselyyn). Versiolohko tarvitaan, koska tyyppisopimus muuttuu (CLAUDE.md sääntö 5), ja `SCHEMA_VERSION` nousee 2:een varmuuskopioiden tunnistamista varten. |
+| `upgrade()` | Ei kirjoita mitään: puuttuva `aliases` tarkoittaa "ei aliaksia". Aliakset täytetään `syncExerciseLibrary()`-funktiossa, joka osaa myös nimitörmäykset ja uudet liikkeet. |
+| Varmuuskopio | `aliases` valinnaisena zod-skeemaan. v1-tiedostot (ei kenttää) tuodaan virheettä; v2-tiedostot kulkevat edestakaisin identtisinä. |
+
+### 9.2 Kirjaston versiointi (`syncExerciseLibrary`)
+
+`seedExerciseLibrary()` (kertaluonteinen) korvataan idempotentilla `syncExerciseLibrary()`:lla,
+jota kutsuu `bootstrap.ts` käynnistyksessä, käyttöönotto ja `restoreBackup`.
+
+- Siemendatan jokaisella rivillä on `since: 1 | 2` = kirjastoversio, jossa liike tuli.
+  Asennettu versio on `meta.libraryVersion`; 1.0-asennuksessa avainta ei ole → tulkitaan 1:ksi.
+- Säännöt: tyhjä kanta → koko kirjasto. Vanha asennus → vain `since > asennettu` ja vain jos
+  normalisoitu nimi on vapaa (myös arkistoidut, poistetut ja omat liikkeet huomioidaan).
+  Poistettua ei palauteta (versioportti), arkistoitua ei aktivoida (`archived` ei kuulu
+  päivitettäviin kenttiin). Aliakset täytetään vain kirjastoliikkeille (`isCustom: false`),
+  joilla niitä ei vielä ole, nimen perusteella. Toinen ajo ei muuta mitään.
+- "Korvaa"-tuonti nollaa `meta.libraryVersion`:n, koska liiketaulu tulee silloin kokonaan
+  tiedostosta: vanhasta varmuuskopiosta palautettu kirjasto päivittyy tällä kierroksella
+  lisättyihin liikkeisiin ja aliaksiin.
+
+### 9.3 Haku (`src/domain/exerciseSearch.ts`, puhdas)
+
+`normalizeTerm` (pienet kirjaimet `fi`, ä/ö/å → a/o/a, väliviivat ja välimerkit välilyönniksi,
+välilyönnit tiivistetään) → sanalista. Jokaisen hakusanan on osuttava nimeen tai aliakseen.
+Vähintään 5-merkkisillä sanoilla sallitaan yksi muokkaus (lisäys, poisto, korvaus tai
+**vierekkäisten vaihto**, jotta "pulldwon" → "pulldown" löytyy). Tulosjärjestys:
+nimi alkaa hakusanalla → nimi sisältää → osuma vain aliakseen → kirjoitusvirheosuma, saman
+tason sisällä nimen mukaan (`fi`). Osuman mukana kulkee `aliasHit`, joka näytetään rivillä
+muodossa "myös: pec deck". `filterExercises` (nimen alimerkkijono) poistuu; `ExercisePicker` ja
+`ExerciseLibraryScreen` käyttävät samaa funktiota.
+
+### 9.4 `MuscleSelector` ja osumatestaus
+
+Uusi `src/components/MuscleMap/MuscleSelector.tsx` käyttää `bodyPaths`-muotoja ja samoja
+tokeneita kuin `MuscleMap`. Yksi näkymä kerrallaan (`SegmentedControl` "Edestä"/"Takaa"),
+napautus kiertää ei valittu → ensisijainen → toissijainen → ei valittu, valitut siruina kartan
+alla, "Valitse listasta" avaa entiset sirurivit (ruudunlukijapolku).
+
+Osumatesti on puhdas funktio (`hitTest.ts`), ei DOM-kokeilua: jokaiselle muodolle lasketaan
+polun **tarkka** rajauslaatikko (tuettu `M L H V Q Z`, toisen asteen käyrän ääriarvot
+analyyttisesti) ja siitä elliptinen osuma-alue, jota kasvatetaan näkyvää muotoa suuremmaksi.
+Napautus valitsee lihaksen, jonka normalisoitu etäisyys on pienin ja ≤ 1. Peilattu puoli
+normalisoidaan `x > 50 → 100 − x`. Koska jokaisen muodon oma keskipiste antaa etäisyyden 0,
+muodon keskeltä valitaan aina oikea lihas – tämä on sama kriteeri, jonka Playwright ajaa
+18 lihaksella molemmissa kokoluokissa.
+
+### 9.5 Pikaluonti
+
+- `ExercisePicker` saa `onCreate?: (name: string) => void`. Hakusanan kanssa viimeisenä rivinä
+  aina "+ Luo uusi liike: ”…”", tyhjässä tilassa ensisijaisena painikkeena.
+- Uusi `ExercisePickerSheet` omistaa paneelin tilan (haku ↔ pikalomake, takaisin-nuoli, hakusana
+  tallessa) ja luonnin, joten `WorkoutScreen`, `DayScreen` ja `OnboardingScreen` saavat saman
+  käyttäytymisen yhdestä paikasta eikä reitti vaihdu missään.
+- `QuickExerciseForm`: nimi, `MuscleSelector`, väline; `Collapsible`-osiossa tyyppi,
+  painonlisäys, lepo, toistoalue ja muistiinpano. Oletukset johdetaan välineestä ja asetuksista
+  niin kauan kuin käyttäjä ei ole koskenut kenttään. Kaksoiskappalevaroitus, kun normalisoitu
+  nimi vastaa olemassa olevan liikkeen nimeä tai aliasta → "Käytä tätä" / "Luo silti".
+  Tallennus lukkiutuu käsittelyn ajaksi (tuplanapautus).
+
+### 9.6 Työpaketit
+
+| Vaihe | Sisältö | Omistaja |
+|---|---|---|
+| A | tyyppi, `db.version(2)`, siemendata (47 liikettä + aliakset), `syncExerciseLibrary`, `exerciseSearch`, varmuuskopio, testit | Coder A |
+| B | `MuscleSelector`, `hitTest`, galleria, testit | Coder B (rinnakkain A:n kanssa) |
+| C | `QuickExerciseForm`, `ExercisePickerSheet`, treeni/päivä/käyttöönotto, `ExerciseForm` | minä (riippuu A:sta ja B:stä) |
+| D | E2E, kuvakaappaukset, Lighthouse, README, versio 1.1.0 | minä + Tester |
+
+### 9.7 Hyväksymiskriteerit
+
+1. "pec dec", "peck deck", "butterfly", "lat pulldown", "face pull", "hip thrust", "rdl",
+   "leg press" ja "pulldwon" löytävät oikean liikkeen.
+2. Kesken treenin luotu liike ilmestyy treeniin ilman navigointia; kirjatut sarjat ja käynnissä
+   oleva lepoajastin säilyvät.
+3. Kaikki 18 lihasta valittavissa kartalta 360 × 800 ja 390 × 844 -kokoluokassa.
+4. 1.0-asennus saa uudet liikkeet ja aliakset ilman että oma tai arkistoitu liike kaksinkertaistuu.
+5. Laatuportit vihreinä, Lighthouse ei laske 1.0:sta.
+
+### 9.8 Korjauskierros 1 – täydennetyt kohdat
+
+`KORJAUS_1_PROMPT.md` palautettiin keskusteluun liitetystä tekstistä; liitteestä katkesi
+kohtia, jotka on täydennetty näin (sisältövaatimukset ennallaan):
+
+| Kohta | Täydennys |
+|---|---|
+| 3.4 tiedostopolku | `src/components/MuscleMap/MuscleSelector.tsx` |
+| 3.2 "Hauiskääntö EZ-…" | `Hauiskääntö EZ-tangolla` (aliakset ez curl, ez bar curl) |
+| 3.2 "Kahvakuu…" | `Kahvakuulaheilautus` (kettlebell swing, kb swing) |
+| 3.2 Kyykky Smith-laitteessa, lihakset | ensisijaiset quads, glutes; toissijainen hamstrings |
+| 3.2 Rintatuettu soutu, ensisijaiset | upper_back, lats |
+| 3.1 taulukon rivi "Hauiskääntö Scott-penkis…" | `Hauiskääntö Scott-penkissä`: preacher curl, scott curl |
+| 3.3 ensimmäinen lause | "Korvaa kertaluonteinen `seedExerciseLibrary()` idempotentilla `syncExerciseLibrary()`" |
+| 3.5 pikalomakkeen kentät | "Näkyvissä vain: **Nimi** (esitäytetty hakusanasta, ensimmäinen kirjain isolla), **Lihakset**, **Väline**" |
+| 3.1 aliasten indeksointi | "Kenttää ei indeksoida." |
+
+### 9.9 Oletukset tällä kierroksella
+
+1. **Kirjastossa oli 78 liikettä, ei 79** (laskettu `EXERCISE_LIBRARY`:stä). 47 uutta → **125**.
+2. **Kaksoiskappalevaroitus vertaa normalisoitua nimeä tasan** olemassa olevien liikkeiden
+   nimiin ja aliaksiin. Koko hakufunktion käyttö varoitukseen tuottaisi vääriä varoituksia
+   melkein jokaisesta nimestä ("Pec dec kone" osuisi moneen); tarkka vertailu antaa juuri
+   promptissa kuvatun tapauksen ("pec deck" → Vipunosto rintaliikelaitteessa).
+3. **`Ojentajapunnerrus köydellä` jää erillisenä liikkeenä** nykyisen `Ojentajapunnerrus
+   taljassa` -liikkeen rinnalle (eri vetokahva, eri tuntuma), koska prompt listaa sen
+   erikseen. Aliakset eroteltu: "pushdown, triceps pushdown" vs. "rope pushdown".
+4. **`aliases` ei ole Dexie-indeksi.** Haku tehdään muistissa koko kirjastolle (125 riviä),
+   joten indeksi olisi turhaa ylläpitokustannusta.
+5. **`bootstrap.ts` siementää kirjaston** jo ennen käyttöönottoa (ennen vain käyttöönotto
+   teki sen). Käyttöönotto kutsuu samaa idempotenttia funktiota, joten näkyvä ero on vain se,
+   että kirjasto on valmiina myös silloin kun käyttöönotto ohitetaan.
+
+### 9.10 Korjauskierroksen aikana tehdyt lisäpäätökset
+
+| Päätös | Perustelu |
+|---|---|
+| Osuma-alueen **liukuma 2,5** (normalisoitu etäisyys) pelkän alueen sisäpuolen sijaan | Yksi vartalonäkymä on puhelimella noin 150 px leveä, joten yksi viewBox-yksikkö on ~2 px. Ilman liukumaa sormen 15 px heitto kapean lihaksen (kyynärvarsi, lähentäjät) kohdalla ei valinnut mitään. Liukuma ei muuta sitä, mikä lihas voittaa – lähin voittaa aina – vaan vain sitä, milloin napautus menee ohi koko kartasta. |
+| Hakutulosten tasasijat ratkaistaan **aliaksen osuvuudella** (alias = hakusana → alkaa → sisältää) ennen nimeä | Ilman tätä "pec dec" nosti ensimmäiseksi liikkeen, jonka alias on "reverse pec deck". Nyt kaikki 1.0:n nollaosumahaut nostavat oikean liikkeen kärkeen, mikä on hyödyn kannalta eri asia kuin "löytyy jostain listalta". |
+| Nimen ainutlaatuisuus vertaa `normalizeTerm`-muotoa, ei pelkkää pientä kirjainkokoa | Muuten pikalomakkeen kaksoiskappalevaroitus ja luonnin esto olisivat eri mieltä esimerkiksi nimistä "Pec-dec" ja "Pec dec", ja käyttäjä jäisi umpikujaan. |
+| Ilmoitukset (toast) eivät ota napautuksia vastaan; vain niiden toimintopainike on klikattava | Ennätysilmoitus osui 360 px leveällä ruudulla keskelle lihaskarttaa ja nielaisi napautukset. Löytyi kuvakaappausajossa. |
+| Pikalomake täyttää paneelin korkeuden: kentät vierivät omassa alueessaan ja tallennuspainike on vieritysalueen ulkopuolella | Kiinnitetty (`sticky`) palkki peitti lihaskartan alaosan ja "Lisäasetukset"-osion. Nyt painike on aina peukalon ulottuvilla eikä mikään jää sen alle. |
+| Arkistoitu samannimineinen liike tarjotaan palautettavaksi ("Palauta ja käytä") | Kaksoiskappaleen luominen arkistoidun rinnalle olisi huonompi lopputulos kuin vanhan palautus, ja täsmälleen samaa nimeä ei muutenkaan voi luoda. |
+| Lihaskartta pysyy isona (52 svh), vaikka lomake vierii | Prompt vaatii, että pienetkin lihakset osuvat sormeen 360 px:n ruudulla. Kartan pienentäminen mahtumaan ruudulle kerralla tekisi kyynärvarresta ja lähentäjistä noin 9 px leveitä kohteita. |
+| Pikaluonti on yhdessä komponentissa (`ExercisePickerSheet`), jota treeni-, päivä- ja käyttöönottonäkymät käyttävät | Kolme erillistä toteutusta eriytyisi heti; nyt takaisin-nuoli, hakusanan säilyminen ja luonnin käsittely ovat identtiset kaikissa. Haku pidetään `hidden`-tilassa mountattuna, jotta hakusana, suodatin ja vieritys säilyvät. |

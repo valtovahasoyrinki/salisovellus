@@ -65,6 +65,8 @@ export interface Exercise {
   defaultRestSec: number;
   defaultRepRange: RepRange;
   notes: string;
+  /** Hakusanat (englanninkieliset ja salislangin nimet). Ei näytetä nimenä. */
+  aliases?: string[];
   /** Viittaus `images`-tauluun, jos liikkeelle on oma kuva. */
   imageId?: string;
   archived: boolean;

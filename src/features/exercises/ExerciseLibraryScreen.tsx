@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import {
-  createExercise,
-  filterExercises,
-  listExercises,
-} from '@/db/repositories/exerciseRepo'
+import { createExercise, listExercises } from '@/db/repositories/exerciseRepo'
+import { findExercises } from '@/domain/exerciseSearch'
 import { MUSCLE_ORDER, muscleLabel } from '@/domain/muscles'
 import { equipmentLabel } from '@/domain/equipment'
 import type { MuscleId } from '@/domain/types'
@@ -57,7 +54,7 @@ export default function ExerciseLibraryScreen() {
     return map
   }, [scoped])
 
-  const results = useMemo(() => filterExercises(scoped, query, muscle), [scoped, query, muscle])
+  const results = useMemo(() => findExercises(scoped, query, muscle), [scoped, query, muscle])
   const existingNames = useMemo(
     () => (all ?? []).map((exercise) => ({ id: exercise.id, name: exercise.name })),
     [all],
@@ -128,12 +125,12 @@ export default function ExerciseLibraryScreen() {
         />
       ) : (
         <ul className="mt-2 divide-y divide-border">
-          {results.map((exercise) => (
+          {results.map(({ exercise, aliasHit }) => (
             <li key={exercise.id}>
               <ListRow
                 to={`/exercises/${exercise.id}`}
                 title={exercise.name}
-                subtitle={`${exercise.primaryMuscles.map(muscleLabel).join(', ')} · ${equipmentLabel(exercise.equipment)}`}
+                subtitle={`${exercise.primaryMuscles.map(muscleLabel).join(', ')} · ${equipmentLabel(exercise.equipment)}${aliasHit === undefined ? '' : ` · myös: ${aliasHit}`}`}
                 leading={<ExerciseThumb exercise={exercise} />}
                 trailing={exercise.archived ? <Badge>Arkistoitu</Badge> : undefined}
               />

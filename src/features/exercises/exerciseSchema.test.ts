@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { filterExercises } from '@/db/repositories/exerciseRepo'
 import type { Exercise } from '@/domain/types'
 import { EMPTY_FORM, formFromExercise, validateExerciseForm } from './exerciseSchema'
 
@@ -80,49 +79,5 @@ describe('lomakkeen esitäyttö liikkeestä', () => {
     expect(form.repMin).toBe(6)
     expect(form.repMax).toBe(10)
     expect(form.notes).toBe('Jalat tukevasti maassa')
-  })
-})
-
-const make = (
-  id: string,
-  name: string,
-  primary: Exercise['primaryMuscles'],
-  secondary: Exercise['secondaryMuscles'] = [],
-): Exercise => ({
-  id,
-  name,
-  primaryMuscles: primary,
-  secondaryMuscles: secondary,
-  equipment: 'barbell',
-  kind: 'weight_reps',
-  increment: 2.5,
-  defaultRestSec: 150,
-  defaultRepRange: { min: 6, max: 10 },
-  notes: '',
-  archived: false,
-  isCustom: false,
-  createdAt: 0,
-})
-
-describe('liikkeiden suodatus', () => {
-  const list = [
-    make('1', 'Penkkipunnerrus', ['chest'], ['triceps']),
-    make('2', 'Takakyykky', ['quads'], ['glutes']),
-    make('3', 'Ylätalja', ['lats'], ['biceps']),
-  ]
-
-  it('löytää liikkeen nimen osalla kirjainkoosta riippumatta', () => {
-    expect(filterExercises(list, 'PENKKI', 'all').map((e) => e.id)).toEqual(['1'])
-    expect(filterExercises(list, 'talja', 'all').map((e) => e.id)).toEqual(['3'])
-  })
-
-  it('suodattaa lihasryhmällä myös toissijaisista', () => {
-    expect(filterExercises(list, '', 'chest').map((e) => e.id)).toEqual(['1'])
-    expect(filterExercises(list, '', 'biceps').map((e) => e.id)).toEqual(['3'])
-  })
-
-  it('yhdistää haun ja suodattimen', () => {
-    expect(filterExercises(list, 'kyykky', 'chest')).toEqual([])
-    expect(filterExercises(list, 'kyykky', 'quads').map((e) => e.id)).toEqual(['2'])
   })
 })

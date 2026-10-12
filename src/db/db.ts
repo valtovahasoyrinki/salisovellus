@@ -20,7 +20,7 @@ import type {
   Settings,
 } from '@/domain/types'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export class SaliDatabase extends Dexie {
   exercises!: EntityTable<Exercise, 'id'>
@@ -38,6 +38,32 @@ export class SaliDatabase extends Dexie {
     super(name)
 
     this.version(1).stores({
+      exercises: 'id, name, archived, equipment, kind, *primaryMuscles, *secondaryMuscles, createdAt',
+      programs: 'id, active',
+      workoutDays: 'id, programId, [programId+order]',
+      dayExercises: 'id, dayId, [dayId+order], exerciseId',
+      sessions: 'id, startedAt, status, dayId, dateKey',
+      sessionExercises: 'id, sessionId, [sessionId+order], exerciseId',
+      setEntries:
+        'id, sessionExerciseId, sessionId, exerciseId, [exerciseId+completedAt], [sessionExerciseId+order], completedAt',
+      images: 'id',
+      settings: 'id',
+      meta: 'key',
+    })
+
+    /*
+      Versio 2 lisää `Exercise.aliases`-kentän (hakusanat). Taulut ja indeksit
+      ovat täsmälleen samat kuin v1:ssä: aliaksia ei indeksoida, koska haku
+      tehdään muistissa koko kirjastolle.
+
+      `upgrade()`-kutsua ei tarvita, koska kenttä on valinnainen: puuttuva
+      `aliases` tarkoittaa "ei aliaksia". Aliakset täytetään kirjastoliikkeille
+      `syncExerciseLibrary()`-funktiossa, joka hoitaa myös uudet liikkeet ja
+      nimitörmäykset. Versiolohko on silti pakollinen, koska tyyppisopimus
+      muuttui (CLAUDE.md sääntö 5) ja `SCHEMA_VERSION` nousee varmuuskopioiden
+      tunnistamista varten.
+    */
+    this.version(2).stores({
       exercises: 'id, name, archived, equipment, kind, *primaryMuscles, *secondaryMuscles, createdAt',
       programs: 'id, active',
       workoutDays: 'id, programId, [programId+order]',

@@ -99,13 +99,17 @@ Periaatteet:
 
 ### 6.1 Käyttöönotto
 - Ensimmäisellä avauksella lyhyt käyttöönotto: valmiina ohjelma, jossa kolme treenipäivää nimillä Push, Pull ja Legs (nimet muokattavissa, päiviä voi lisätä ja poistaa).
-- Jokaiseen päivään lisätään liikkeitä liikekirjastosta tai luodaan oma. Kirjastossa 60–80 yleistä salilikettä suomeksi (esim. penkkipunnerrus, vinopenkki käsipainoilla, pystypunnerrus, ylätalja, kulmasoutu, takakyykky, maastaveto, romanialainen maastaveto, jalkaprässi, pohjenousu), kullakin lihasryhmät, väline ja järkevät oletukset. Haku ja suodatus lihasryhmittäin.
+- Jokaiseen päivään lisätään liikkeitä liikekirjastosta tai luodaan oma. Kirjastossa 120–130 yleistä salilikettä suomeksi (esim. penkkipunnerrus, vinopenkki käsipainoilla, pystypunnerrus, ylätalja, kulmasoutu, takakyykky, maastaveto, romanialainen maastaveto, jalkaprässi, pohjenousu), kullakin lihasryhmät, väline ja järkevät oletukset. Haku ja suodatus lihasryhmittäin. (Korjauskierros 1: kirjasto laajeni 78 → 125 liikkeeseen.)
+- Kirjasto on versioitu: sovelluksen päivitys tuo uudet kirjastoliikkeet myös olemassa olevaan asennukseen, mutta ei palauta käyttäjän poistamia tai arkistoituja liikkeitä eikä luo kaksoiskappaletta samannimiselle omalle liikkeelle.
+- Haku löytää liikkeen myös englanninkielisellä nimellä ja salislangilla ("pec dec", "lat pulldown", "rdl", "hip thrust"): liikkeillä on aliakset, vertailu sietää ääkköset, väliviivat ja yhden kirjoitusvirheen. Jos osuma tuli aliaksesta, rivi kertoo sen ("myös: pec deck").
 - Käyttöönoton voi ohittaa ja tehdä myöhemmin.
 
 ### 6.2 Ohjelman ja liikkeiden hallinta
 - Ohjelma-näkymä: treenipäivät korteittain. Päivän sisällä liikkeiden järjestys raahaamalla (iso tartuntakahva), lisäys, poisto ja vaihto.
 - Liikkeelle päiväkohtaiset tavoitesarjat, toistoalue ja lepoaika.
 - Liikekirjasto: haku, suodatus, muokkaus, arkistointi ja palautus, oma kuva kameralla tai galleriasta (pakataan esim. max 1000 px, tallennetaan IndexedDB:hen).
+- **Oman liikkeen voi luoda joka paikasta, jossa liike valitaan** (käyttöönotto, ohjelman päivä ja kesken treenin): hakutulosten viimeisenä rivinä on aina "Luo uusi liike: ”hakusana”", ja pikalomake avautuu samaan paneeliin ilman näkymän vaihtoa. Pikalomakkeessa näkyvät vain nimi, lihakset ja väline; muut arvot johdetaan asetuksista ja välineestä ja ne löytyvät "Lisäasetukset"-osiosta. Jos nimi osuu olemassa olevan liikkeen nimeen tai aliakseen, lomake tarjoaa olemassa olevaa liikettä ("Käytä tätä") ennen uuden luomista ("Luo silti").
+- **Lihakset valitaan napauttamalla lihaskarttaa:** yksi näkymä kerrallaan (edestä/takaa), napautus kiertää ei valittu → ensisijainen → toissijainen → ei valittu, ja valitut näkyvät siruina kartan alla. Tekstilista on varapolku ja ruudunlukijapolku. Sama valitsin on käytössä sekä pikalomakkeessa että kirjaston täydessä lomakkeessa.
 - Liikkeiden yhdistäminen, jos sama liike on luotu kahdesti: historia siirtyy yhdelle liikkeelle.
 
 ### 6.3 Treenin kirjaus – sovelluksen tärkein näkymä
@@ -121,6 +125,7 @@ Optimoi nopeuden ja virheettömyyden mukaan. Tavoite: tavallisen sarjan kirjaus 
   - Sarjan lisäys kopioi edellisen sarjan. Pyyhkäisy poistaa (kumoa-toiminnolla). Pitkä painallus merkitsee lämmittelysarjaksi; lämmittelyt eivät näy analyysissä.
   - Muistiinpano liikkeelle tälle kerralle.
 - Liikkeiden järjestystä voi muuttaa kesken treenin, liikkeen voi ohittaa, ja liikkeen voi lisätä vain tähän kertaan tai myös ohjelmaan.
+- **Uuden liikkeen voi luoda kesken treenin** poistumatta kirjausnäkymästä: luotu liike lisätään heti treeniin (ja halutessa ohjelman päivään), näkymä vierittää uuteen liikekorttiin, ja kirjatut sarjat sekä käynnissä oleva lepoajastin pysyvät koskemattomina.
 - Tärkeimmät toiminnot ruudun alaosassa (yhden käden käyttö). Kosketusalueet vähintään 48 px. Painonumerot isoina ja tasalevyisinä (`tabular-nums`).
 - Kesken jäänyt treeni palautuu, jos sovellus suljetaan tai päivitetään ("Jatka treeniä" -banneri).
 - Ruutu pysyy päällä treenin aikana (Wake Lock, jos tuettu).

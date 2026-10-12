@@ -9,7 +9,8 @@
 import { z } from 'zod'
 import { db, SCHEMA_VERSION } from '@/db/db'
 import { DEFAULT_SETTINGS } from '@/db/repositories/settingsRepo'
-import { setLastBackupAt } from '@/db/repositories/metaRepo'
+import { clearLibraryVersion, setLastBackupAt } from '@/db/repositories/metaRepo'
+import { syncExerciseLibrary } from '@/db/seed/seedLibrary'
 import type { Settings, Timestamp } from '@/domain/types'
 import { dateKeyOf, formatTime } from '@/lib/date'
 
@@ -28,6 +29,8 @@ const exerciseSchema = z.object({
   defaultRestSec: z.number(),
   defaultRepRange: repRange,
   notes: z.string(),
+  /** v2:ssa lisätty hakusanakenttä: vanhat varmuuskopiot eivät sisällä sitä. */
+  aliases: z.array(z.string()).optional(),
   imageId: z.string().optional(),
   archived: z.boolean(),
   isCustom: z.boolean(),
@@ -318,6 +321,9 @@ export interface ImportResult {
  * Kirjoittaa varmuuskopion tietokantaan.
  * `merge` säilyttää nykyisen datan ja ohittaa rivit, joiden id on jo olemassa.
  * `replace` tyhjentää taulut ensin.
+ *
+ * Kirjoituksen jälkeen ajetaan `syncExerciseLibrary()`: vanhasta
+ * varmuuskopiosta palautettu kirjasto saa tämän version liikkeet ja aliakset.
  */
 export async function restoreBackup(file: BackupFile, mode: ImportMode): Promise<ImportResult> {
   const tables = [
@@ -348,6 +354,12 @@ export async function restoreBackup(file: BackupFile, mode: ImportMode): Promise
         db.setEntries.clear(),
         db.images.clear(),
       ])
+      /*
+        Liiketaulu tulee kokonaan tiedostosta, joten laitteen muisti
+        kirjastoversiosta ei enää pidä paikkaansa: nollataan avain, jotta
+        synkronointi tutkii rivit uudelleen.
+      */
+      await clearLibraryVersion()
     }
 
     /*
@@ -391,6 +403,11 @@ export async function restoreBackup(file: BackupFile, mode: ImportMode): Promise
     }
   })
 
+  /*
+    Synkronointi omana transaktionaan tuonnin jälkeen: se avaa oman
+    rw-transaktion eikä saa kilpailla kirjoituksen kanssa.
+  */
+  await syncExerciseLibrary()
   await setLastBackupAt(file.exportedAt)
   return { added, skipped }
 }

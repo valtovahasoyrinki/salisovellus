@@ -1,5 +1,5 @@
 import { db } from '@/db/db'
-import type { Exercise, MuscleId, Timestamp } from '@/domain/types'
+import type { Exercise, Timestamp } from '@/domain/types'
 import { newId } from '@/lib/id'
 
 export type NewExercise = Omit<Exercise, 'id' | 'createdAt' | 'archived' | 'isCustom'> &
@@ -161,21 +161,4 @@ export async function clearExerciseImage(exerciseId: string): Promise<void> {
 
 export async function getExerciseImage(imageId: string): Promise<Blob | undefined> {
   return (await db.images.get(imageId))?.blob
-}
-
-/** Haku nimellä ja suodatus lihasryhmällä (SPEC §6.1, §6.2). */
-export function filterExercises(
-  exercises: Exercise[],
-  query: string,
-  muscle: MuscleId | 'all',
-): Exercise[] {
-  const needle = query.trim().toLocaleLowerCase('fi')
-  return exercises.filter((exercise) => {
-    const matchesQuery = needle === '' || exercise.name.toLocaleLowerCase('fi').includes(needle)
-    const matchesMuscle =
-      muscle === 'all' ||
-      exercise.primaryMuscles.includes(muscle) ||
-      exercise.secondaryMuscles.includes(muscle)
-    return matchesQuery && matchesMuscle
-  })
 }

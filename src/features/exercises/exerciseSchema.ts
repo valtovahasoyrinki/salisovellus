@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizeTerm } from '@/domain/exerciseSearch'
 import type { Equipment, Exercise, ExerciseKind, MuscleId } from '@/domain/types'
 
 /** Liikelomakkeen validointi (SPEC §4: zod lomakkeisiin). */
@@ -64,9 +65,11 @@ export function formFromExercise(exercise: Exercise): ExerciseFormValues {
 }
 
 /**
- * Validoi lomakkeen ja tarkistaa nimen ainutlaatuisuuden. Nimivertailu on
- * suomenkielinen ja kirjainkoosta riippumaton, jotta "Penkki" ja "penkki"
- * eivät päädy kahdeksi liikkeeksi.
+ * Validoi lomakkeen ja tarkistaa nimen ainutlaatuisuuden. Nimivertailu käyttää
+ * haun normalisointia (`normalizeTerm`), joten "Penkki", "penkki" ja
+ * "Penkki-punnerrus" vs. "Penkki punnerrus" eivät päädy kahdeksi liikkeeksi.
+ * Sama vertailu ohjaa pikalomakkeen kaksoiskappalevaroitusta, joten varoitus ja
+ * esto ovat aina samaa mieltä.
  */
 export function validateExerciseForm(
   values: ExerciseFormValues,
@@ -85,10 +88,9 @@ export function validateExerciseForm(
     }
   }
 
-  const normalized = values.name.trim().toLocaleLowerCase('fi')
+  const normalized = normalizeTerm(values.name)
   const duplicate = existingNames.some(
-    (candidate) =>
-      candidate.id !== editingId && candidate.name.toLocaleLowerCase('fi') === normalized,
+    (candidate) => candidate.id !== editingId && normalizeTerm(candidate.name) === normalized,
   )
   if (normalized !== '' && duplicate) errors.name = 'Samanniminen liike on jo olemassa'
 

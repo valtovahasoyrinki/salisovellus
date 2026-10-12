@@ -1,10 +1,11 @@
 import { ensureSettings } from '@/db/repositories/settingsRepo'
+import { syncExerciseLibrary } from '@/db/seed/seedLibrary'
 import { requestPersistentStorage } from '@/lib/storage'
 
 /**
- * Käynnistyksessä tehtävät kertatoimet: asetusrivi olemassa ja tallennuksen
- * pysyvyys pyydetty (SPEC §4). Virhe ei kaada sovellusta – kirjaaminen on
- * tärkeämpää kuin nämä.
+ * Käynnistyksessä tehtävät kertatoimet: asetusrivi olemassa, liikekirjasto
+ * ajan tasalla ja tallennuksen pysyvyys pyydetty (SPEC §4, §6.1). Virhe ei
+ * kaada sovellusta – kirjaaminen on tärkeämpää kuin nämä.
  */
 export async function bootstrap(): Promise<void> {
   try {
@@ -12,6 +13,11 @@ export async function bootstrap(): Promise<void> {
     applyThemeAttribute(settings.theme === 'system' ? systemTheme() : settings.theme)
   } catch (error) {
     console.error('Asetusten alustus epäonnistui', error)
+  }
+  try {
+    await syncExerciseLibrary()
+  } catch (error) {
+    console.error('Liikekirjaston synkronointi epäonnistui', error)
   }
   void requestPersistentStorage()
 }
