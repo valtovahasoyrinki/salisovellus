@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { Suspense, lazy, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   createExercise,
@@ -8,8 +8,19 @@ import {
 } from '@/db/repositories/exerciseRepo'
 import type { Exercise } from '@/domain/types'
 import { Sheet } from '@/components/ui/Sheet'
+import { ScreenSkeleton } from '@/components/ui/Skeleton'
 import { ExercisePicker } from './ExercisePicker'
-import { QuickExerciseForm } from './QuickExerciseForm'
+
+/*
+  Pikalomake ladataan vasta kun sitä tarvitaan. Se tuo mukanaan zod-validoinnin
+  ja lihaskartan, eikä kumpikaan kuulu kirjausnäkymän käynnistykseen: staattisena
+  tuontina ne latautuivat heti sovelluksen avauksessa (noin 35 kt ja kuusi
+  pyyntöä kriittisellä polulla).
+*/
+const QuickExerciseForm = lazy(async () => {
+  const module = await import('./QuickExerciseForm')
+  return { default: module.QuickExerciseForm }
+})
 
 /**
  * Liikkeen valinta ja pikaluonti samassa paneelissa (SPEC §6.2, §6.3).
@@ -84,39 +95,41 @@ export function ExercisePickerSheet({
       </div>
 
       {draftName === null || exercises === undefined ? null : (
-        <QuickExerciseForm
-          initialName={draftName}
-          exercises={exercises}
-          submitLabel={createLabel}
-          onUseExisting={(exercise) => {
-            // Arkistoitu liike palautetaan käyttöön kaksoiskappaleen sijaan.
-            const pick = (): void => {
-              onPick({ ...exercise, archived: false })
+        <Suspense fallback={<ScreenSkeleton />}>
+          <QuickExerciseForm
+            initialName={draftName}
+            exercises={exercises}
+            submitLabel={createLabel}
+            onUseExisting={(exercise) => {
+              // Arkistoitu liike palautetaan käyttöön kaksoiskappaleen sijaan.
+              const pick = (): void => {
+                onPick({ ...exercise, archived: false })
+                close()
+              }
+              if (!exercise.archived) {
+                pick()
+                return
+              }
+              void setExerciseArchived(exercise.id, false).then(pick)
+            }}
+            onSubmit={async (values) => {
+              const id = await createExercise({
+                name: values.name,
+                primaryMuscles: values.primaryMuscles,
+                secondaryMuscles: values.secondaryMuscles,
+                equipment: values.equipment,
+                kind: values.kind,
+                increment: values.increment,
+                defaultRestSec: values.defaultRestSec,
+                defaultRepRange: { min: values.repMin, max: values.repMax },
+                notes: values.notes,
+              })
+              const created = await getExercise(id)
+              if (created) onCreated(created)
               close()
-            }
-            if (!exercise.archived) {
-              pick()
-              return
-            }
-            void setExerciseArchived(exercise.id, false).then(pick)
-          }}
-          onSubmit={async (values) => {
-            const id = await createExercise({
-              name: values.name,
-              primaryMuscles: values.primaryMuscles,
-              secondaryMuscles: values.secondaryMuscles,
-              equipment: values.equipment,
-              kind: values.kind,
-              increment: values.increment,
-              defaultRestSec: values.defaultRestSec,
-              defaultRepRange: { min: values.repMin, max: values.repMax },
-              notes: values.notes,
-            })
-            const created = await getExercise(id)
-            if (created) onCreated(created)
-            close()
-          }}
-        />
+            }}
+          />
+        </Suspense>
       )}
     </Sheet>
   )

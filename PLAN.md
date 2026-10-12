@@ -354,3 +354,35 @@ kohtia, jotka on täydennetty näin (sisältövaatimukset ennallaan):
 | Arkistoitu samannimineinen liike tarjotaan palautettavaksi ("Palauta ja käytä") | Kaksoiskappaleen luominen arkistoidun rinnalle olisi huonompi lopputulos kuin vanhan palautus, ja täsmälleen samaa nimeä ei muutenkaan voi luoda. |
 | Lihaskartta pysyy isona (52 svh), vaikka lomake vierii | Prompt vaatii, että pienetkin lihakset osuvat sormeen 360 px:n ruudulla. Kartan pienentäminen mahtumaan ruudulle kerralla tekisi kyynärvarresta ja lähentäjistä noin 9 px leveitä kohteita. |
 | Pikaluonti on yhdessä komponentissa (`ExercisePickerSheet`), jota treeni-, päivä- ja käyttöönottonäkymät käyttävät | Kolme erillistä toteutusta eriytyisi heti; nyt takaisin-nuoli, hakusanan säilyminen ja luonnin käsittely ovat identtiset kaikissa. Haku pidetään `hidden`-tilassa mountattuna, jotta hakusana, suodatin ja vieritys säilyvät. |
+
+### 9.11 Käynnistys ja Lighthouse tällä kierroksella
+
+Mitattu paikallisella `vite preview` -palvelimella (HTTP/1.1) samassa istunnossa
+molemmista versioista peräkkäin, jotta vertailu on reilu:
+
+| | 1.0 (`3fafee8`) | 1.1 |
+|---|---|---|
+| Performance | 85 | 83 |
+| Accessibility | 100 | 100 |
+| Best Practices | 100 | 100 |
+| FCP / LCP | 3,2 s / 3,5 s | 3,5 s / 3,6 s |
+| Pyyntöjä / siirto | 45 / 284 kt | 52 / 292 kt |
+
+Kolme todellista käynnistyskorjausta tehtiin matkalla:
+
+1. **Liikekirjaston synkronointi ei enää odota ensimmäistä piirtoa.** `bootstrap`
+   odotti `syncExerciseLibrary()`-kutsua, joka kirjoittaa tyhjään kantaan 125
+   riviä – hidastetulla puhelimella satoja millisekunteja ennen kuin mitään
+   näkyi. Nyt se ajetaan piirron jälkeen ja siemendata tuodaan dynaamisesti.
+2. **Pikalomake on laiskasti ladattu** (`ExercisePickerSheet`): zod-validointi,
+   lihaskartta ja hakufunktio eivät ole käynnistyksen kriittisellä polulla.
+3. **Liikkeen lisäyspaneeli on laiskasti ladattu myös kirjausnäkymässä.**
+   Sarjan kirjaukseen ei tarvita hakua eikä karttaa; service worker precachettaa
+   nipun, joten asennetussa sovelluksessa paneeli avautuu välimuistista.
+
+Jäljelle jäävä 2 pisteen ero tulee pyyntöjen määrästä: uudet komponentit lisäävät
+seitsemän nippua, jotka paikallinen HTTP/1.1-palvelin lataa jonossa (siirretyt
+tavut kasvavat vain 2,8 %). Tuotannossa (GitHub Pages, HTTP/2) ja asennetussa
+sovelluksessa (service workerin välimuisti) tämä ei toistu. Absoluuttiset luvut
+eivät ole vertailukelpoisia 1.0:n raportin kanssa (silloin kone oli lepotilassa,
+nyt mittaus tehtiin kuormitetulla koneella) – vain saman istunnon vertailu on.

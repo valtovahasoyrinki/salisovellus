@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useReducedMotion } from 'motion/react'
@@ -23,7 +23,17 @@ import { CloseIcon, DumbbellIcon, PlusIcon, SwapIcon } from '@/components/icons'
 import { useRestTimer } from '@/app/providers/RestTimerProvider'
 import { useToast } from '@/app/providers/ToastProvider'
 import { useSettings } from '@/app/useSettings'
-import { ExercisePickerSheet } from '@/features/exercises/ExercisePickerSheet'
+
+/*
+  Liikkeen lisäyspaneeli ladataan vasta kun sitä tarvitaan: sarjan kirjaukseen
+  ei tarvita hakua, lihaskarttaa eikä zod-validointia, eikä niiden pidä olla
+  käynnistyksen kriittisellä polulla (SPEC §8, §10). Service worker precachettaa
+  nipun, joten asennetussa sovelluksessa paneeli avautuu välimuistista.
+*/
+const ExercisePickerSheet = lazy(async () => {
+  const module = await import('@/features/exercises/ExercisePickerSheet')
+  return { default: module.ExercisePickerSheet }
+})
 import { formatClock } from '@/lib/date'
 import { scrollIntoViewWhenReady } from '@/lib/scroll'
 import { disableWakeLock, enableWakeLock } from '@/lib/wakeLock'
@@ -52,6 +62,8 @@ export function WorkoutScreen() {
   )
 
   const [adding, setAdding] = useState(false)
+  /* Paneeli jää mountattuna ensimmäisen avauksen jälkeen, jotta sulkuanimaatio ehtii soida. */
+  const [pickerLoaded, setPickerLoaded] = useState(false)
   const [addToProgram, setAddToProgram] = useState(false)
   const [reordering, setReordering] = useState(false)
   const [finishing, setFinishing] = useState(false)
@@ -113,6 +125,11 @@ export function WorkoutScreen() {
     Liikkeen lisäys treeniin (valittu tai juuri luotu). Kirjatut sarjat ja
     käynnissä oleva lepoajastin eivät muutu: tämä vain lisää uuden rivin.
   */
+  const openPicker = (): void => {
+    setPickerLoaded(true)
+    setAdding(true)
+  }
+
   const addToWorkout = (exercise: Exercise, message: string): void => {
     void addExerciseToSession(sessionId, exercise.id).then(() => {
       toast.show(`${exercise.name} ${message}`, { tone: 'good' })
@@ -151,7 +168,7 @@ export function WorkoutScreen() {
           description="Lisää liikkeet tähän treeniin. Voit lisätä ne vain tälle kerralle tai myös ohjelmaan."
           icon={<DumbbellIcon size={28} />}
           action={
-            <Button variant="primary" icon={<PlusIcon size={18} />} onClick={() => setAdding(true)}>
+            <Button variant="primary" icon={<PlusIcon size={18} />} onClick={openPicker}>
               Lisää liike
             </Button>
           }
@@ -182,7 +199,7 @@ export function WorkoutScreen() {
       {/* Tärkeimmät toiminnot ruudun alaosassa, yhden käden ulottuvilla. */}
       <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 px-3 py-2 backdrop-blur-xl">
         <div className="mx-auto flex max-w-lg gap-2">
-          <Button variant="secondary" fullWidth icon={<PlusIcon size={18} />} onClick={() => setAdding(true)}>
+          <Button variant="secondary" fullWidth icon={<PlusIcon size={18} />} onClick={openPicker}>
             Lisää liike
           </Button>
           <Button
@@ -196,27 +213,31 @@ export function WorkoutScreen() {
         </div>
       </div>
 
-      <ExercisePickerSheet
-        open={adding}
-        onClose={() => setAdding(false)}
-        title="Lisää liike"
-        createLabel="Luo ja lisää treeniin"
-        multiple
-        selectedIds={new Set(detail.exercises.map((item) => item.exercise.id))}
-        header={
-          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-3 py-2.5">
-            <span className="text-sm">Lisää myös ohjelmaan</span>
-            <Toggle
-              checked={addToProgram}
-              onChange={setAddToProgram}
-              label="Lisää liike myös ohjelman treenipäivään"
-              disabled={dayId === undefined}
-            />
-          </div>
-        }
-        onPick={(exercise: Exercise) => addToWorkout(exercise, 'lisätty treeniin')}
-        onCreated={(exercise: Exercise) => addToWorkout(exercise, 'luotu ja lisätty treeniin')}
-      />
+      {pickerLoaded ? (
+        <Suspense fallback={null}>
+          <ExercisePickerSheet
+            open={adding}
+            onClose={() => setAdding(false)}
+            title="Lisää liike"
+            createLabel="Luo ja lisää treeniin"
+            multiple
+            selectedIds={new Set(detail.exercises.map((item) => item.exercise.id))}
+            header={
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-3 py-2.5">
+                <span className="text-sm">Lisää myös ohjelmaan</span>
+                <Toggle
+                  checked={addToProgram}
+                  onChange={setAddToProgram}
+                  label="Lisää liike myös ohjelman treenipäivään"
+                  disabled={dayId === undefined}
+                />
+              </div>
+            }
+            onPick={(exercise: Exercise) => addToWorkout(exercise, 'lisätty treeniin')}
+            onCreated={(exercise: Exercise) => addToWorkout(exercise, 'luotu ja lisätty treeniin')}
+          />
+        </Suspense>
+      ) : null}
 
       <Sheet open={reordering} onClose={() => setReordering(false)} title="Liikkeiden järjestys">
         <DragList
