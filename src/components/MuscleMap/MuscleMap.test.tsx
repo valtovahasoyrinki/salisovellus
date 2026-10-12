@@ -22,14 +22,21 @@ describe('MuscleMap', () => {
     for (const path of triceps) expect(path.getAttribute('fill')).toBe('var(--muscle-secondary)')
   })
 
-  it('säätää peittävyyttä viikon kuormituksen mukaan', () => {
+  it('sekoittaa lämpökartan sävyn kuormituksen mukaan', () => {
     const { container } = render(
       <MuscleMap view="front" intensity={{ quads: 1, calves: 0.25 }} />,
     )
     const quads = container.querySelector('[data-muscle="quads"]')
     const calves = container.querySelector('[data-muscle="calves"]')
-    expect(Number(quads?.getAttribute('fill-opacity'))).toBeCloseTo(1)
-    expect(Number(calves?.getAttribute('fill-opacity'))).toBeCloseTo(0.415)
+    const abs = container.querySelector('[data-muscle="abs"]')
+    // Täysi kuormitus = aksentti, kevyt kuormitus sekoittuu treenaamattomaan.
+    expect(quads?.getAttribute('fill')).toBe(
+      'color-mix(in oklab, var(--accent) 100%, var(--muscle-idle))',
+    )
+    expect(calves?.getAttribute('fill')).toBe(
+      'color-mix(in oklab, var(--accent) 42%, var(--muscle-idle))',
+    )
+    expect(abs?.getAttribute('fill')).toBe('var(--muscle-idle)')
   })
 
   it('kertoo lihakset suomeksi ruudunlukijalle', () => {

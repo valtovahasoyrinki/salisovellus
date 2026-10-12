@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { normalizeTerm } from '@/domain/exerciseSearch'
+import { nameKey } from '@/domain/exerciseSearch'
 import type { Equipment, Exercise, ExerciseKind, MuscleId } from '@/domain/types'
 
 /** Liikelomakkeen validointi (SPEC §4: zod lomakkeisiin). */
@@ -14,7 +14,7 @@ export const exerciseFormSchema = z
     defaultRestSec: z.number().int().min(0).max(900),
     repMin: z.number().int().min(1, 'Toistojen alaraja on vähintään 1').max(100),
     repMax: z.number().int().min(1).max(100),
-    notes: z.string().max(500),
+    notes: z.string().max(500, 'Muistiinpano on liian pitkä (enintään 500 merkkiä)'),
   })
   .refine((value) => value.repMin <= value.repMax, {
     message: 'Toistoalueen alaraja ei voi olla ylärajaa suurempi',
@@ -88,9 +88,9 @@ export function validateExerciseForm(
     }
   }
 
-  const normalized = normalizeTerm(values.name)
+  const normalized = nameKey(values.name)
   const duplicate = existingNames.some(
-    (candidate) => candidate.id !== editingId && normalizeTerm(candidate.name) === normalized,
+    (candidate) => candidate.id !== editingId && nameKey(candidate.name) === normalized,
   )
   if (normalized !== '' && duplicate) errors.name = 'Samanniminen liike on jo olemassa'
 

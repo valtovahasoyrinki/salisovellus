@@ -386,3 +386,35 @@ tavut kasvavat vain 2,8 %). Tuotannossa (GitHub Pages, HTTP/2) ja asennetussa
 sovelluksessa (service workerin välimuisti) tämä ei toistu. Absoluuttiset luvut
 eivät ole vertailukelpoisia 1.0:n raportin kanssa (silloin kone oli lepotilassa,
 nyt mittaus tehtiin kuormitetulla koneella) – vain saman istunnon vertailu on.
+
+### 9.12 Tester-kierroksen löydökset ja korjaukset
+
+Tester-agentti ajoi promptin osion 4 rikkomisyritykset oikeassa selaimessa.
+Löydöksistä yhdeksän johti korjaukseen:
+
+| Vakavuus | Löydös | Korjaus |
+|---|---|---|
+| Estävä | **Sirurivit eivät vierineet** `fieldset`-elementin sisällä: "Kehonpaino" ja "Muu" olivat ruudun ulkopuolella, ja "Valitse listasta" -varapolusta näkyi 3/18 lihasta. Syy: `fieldset`in selainoletus `min-inline-size: min-content` estää kapenemisen, joten `overflow-x-auto` ei saanut omaa vierityslaatikkoa. | `min-w-0` kaikkiin lomakkeiden `fieldset`-elementteihin (`QuickExerciseForm`, `ExerciseForm`, `MuscleSelector`). Vika oli myös 1.0:n liikelomakkeessa. |
+| Vakava | **Lihaskartan osuma ei vastannut näkyvää muotoa**: rajauslaatikoista muodostetut ellipsit antoivat väärän lihaksen jopa 44 %:lle muodon pinnasta (näkyvä takaolkapää valitsi ojentajan, lähentäjät valitsi etureiden). Lisäksi hyväksymiskriteeri "napauta muodon keskikohtaa" oli tautologia: ellipsin keskipiste *oli* rajauslaatikon keskipiste. | Osuma lasketaan nyt polun oikeasta geometriasta: polut litistetään monikulmioiksi (`flattenPath`), piste testataan säteenheitolla, päällekkäisissä muodoissa voittaa päällimmäinen eli viimeksi piirretty, ja vain muotojen ulkopuolinen napautus menee lähimmälle (`SLACK = 4` yksikköä). Yksikkötesti käy läpi **jokaisen muodon sisäpisteet ruudukkona**, ja E2E kysyy napautuspisteen selaimelta (`isPointInFill`) – kumpikaan ei voi enää olla tautologia. |
+| Vakava | **Yli 500 merkin muistiinpano**: tallennus ei tehnyt mitään eikä virhettä näkynyt (zodin englanninkielinen viesti, eikä `errors.notes` välittynyt kenttään). | Suomenkielinen viesti, `error`-propi kumpaankin lomakkeeseen ja `maxLength={500}`. |
+| Vakava | **Lihaskartan tilojen kontrasti** oli 1,26–1,30:1 (treenaamaton vs. runko): valitsemattomia lihaksia ei käytännössä nähnyt. | Kirkkaudet jaettu tasavälein rungon ja aksentin väliin: 2,28–2,35:1 jokaista paria kohden, mikä on tällä kirkkausvälillä suurin mahdollinen kolmelle tilalle. `scripts/contrast.mjs` tarkistaa nyt myös nämä parit. WCAG 1.4.11:n 3:1 ei ole saavutettavissa, joten valinta kerrotaan myös tekstinä (sirut + `aria-live`) ja varapolku on tekstilista. |
+| Vakava | **Tuplanapautuksen lukko oli vain visuaalinen**: kolme synkronista napautusta loi kolme liikettä, koska React ei flushaa `setSaving(true)`-tilaa synkronisesti. | Salpa `useRef`-muuttujassa heti `submit()`-funktion alussa. |
+| Kosmeettinen | **Sama liike saattoi tulla treeniin kahdesti** (uusi "Palauta ja käytä" -polku teki siitä sokean): kaksi korttia jakoi saman ankkuri-id:n ja tuplasi tavoitesarjat. | `WorkoutScreen` tunnistaa jo lisätyn liikkeen, vierittää olemassa olevaan korttiin ja kertoo sen ilmoituksella. |
+| Kosmeettinen | **Pelkistä välimerkeistä koostuva nimi** ("--..") kiersi uniikkiussäännön, ja varoitus lupasi estää luonnin jota ei estetty. | Yhteinen `nameKey`-avain: normalisoitu muoto, tai tyhjäksi normalisoituvalle nimelle trimmattu pienaakkosmuoto. Nyt varoitus ja esto ovat samaa mieltä. |
+| Kosmeettinen | **Haun järjestys**: "lat pull down" ja promptin oma "pulldwon" nostivat ensimmäiseksi liikkeen, jonka nimessä on kirjaimet "lat" sanan *sisällä* ("ylätaljassa"); "dl" nosti Pendlay-soudun maastavedon ohi. | Hakutulokset painottavat nyt sanan alusta löytyviä osumia (heikot, toisen sanan sisältä löytyvät osumat pudottavat sijaa) ja tasan hakusanaa vastaava alias on yhtä vahva kuin nimen alku. |
+| Kosmeettinen | **Välilyönnin pudottaminen** ("facepull", "pecdec", "hackkyykky") ei löytänyt mitään; "smith machine" ja "side delt" eivät osuneet. | Haku vertaa myös välilyönnittömiä muotoja, ja aliaksia täydennettiin (`dl`, `bb row`, `smith machine`, `side delt`). |
+| Kosmeettinen | **Kestoliikkeen pikaluonti** antoi toistoalueen 8–12. | `quickDefaults` johtaa toistoalueen tyypistä: `time` → 1–1. |
+
+Korjausten sivuvaikutus: lämpökartan sävy lasketaan nyt `color-mix`-sekoituksella
+treenaamattomasta aksenttiin. Pelkkä peittävyys ei toiminut uusilla kirkkauksilla,
+koska vaaleassa teemassa aksentti on tummempi kuin vartalo – kevyt kuormitus olisi
+näyttänyt vaaleammalta kuin treenaamaton lihas.
+
+Jätettiin korjaamatta (kirjattu tietoisesti):
+
+- `bech press` (4-merkkinen kirjoitusvirhe) ei löydy: kirjoitusvirhettä siedetään
+  vain vähintään 5-merkkisissä hakusanoissa. Lyhyemmillä sanoilla yhden
+  muokkauksen sieto osuisi liian moneen liikkeeseen.
+- Lihasryhmien nimet ("etureisi") eivät ole hakusanoja. Lihasryhmäsuodatin tekee
+  saman rajauksen yhdellä napautuksella, eikä nimien lisääminen aliaksiksi olisi
+  hakuosuma vaan suodatus.

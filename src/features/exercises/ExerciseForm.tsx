@@ -75,7 +75,7 @@ export function ExerciseForm({
         required
       />
 
-      <fieldset className="space-y-2">
+      <fieldset className="min-w-0 space-y-2">
         <legend className="mb-1 text-sm font-medium text-text">Lihakset</legend>
         <MuscleSelector
           value={{ primary: values.primaryMuscles, secondary: values.secondaryMuscles }}
@@ -90,7 +90,7 @@ export function ExerciseForm({
         />
       </fieldset>
 
-      <fieldset className="space-y-2">
+      <fieldset className="min-w-0 space-y-2">
         <legend className="text-sm font-medium text-text">Väline</legend>
         <ChipRow label="Väline">
           {EQUIPMENT_ORDER.map((id: Equipment) => (
@@ -104,7 +104,7 @@ export function ExerciseForm({
         </ChipRow>
       </fieldset>
 
-      <fieldset className="space-y-2">
+      <fieldset className="min-w-0 space-y-2">
         <legend className="text-sm font-medium text-text">Tyyppi</legend>
         <ChipRow label="Tyyppi">
           {(Object.keys(EXERCISE_KIND_LABELS) as ExerciseKind[]).map((id) => (
@@ -163,7 +163,9 @@ export function ExerciseForm({
         label="Muistiinpano"
         value={values.notes}
         onChange={(event) => set('notes', event.target.value)}
+        error={errors.notes}
         placeholder="Esim. kahvan leveys, istuimen korkeus"
+        maxLength={500}
         rows={3}
       />
 

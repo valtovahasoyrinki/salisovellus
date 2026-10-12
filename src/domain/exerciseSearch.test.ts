@@ -148,9 +148,29 @@ describe('liikkeiden haku', () => {
     ])
   })
 
-  it('saman tason sisällä järjestys on nimen mukaan (fi)', () => {
-    const sameLevel = [item('Ärsyttävä soutu'), item('Alatalja soutu'), item('Ojentajasoutu')]
-    expect(names(sameLevel, 'soutu')).toEqual(['Alatalja soutu', 'Ojentajasoutu', 'Ärsyttävä soutu'])
+  it('yhtä vahvojen osumien sisällä järjestys on nimen mukaan (fi)', () => {
+    const sameLevel = [item('Ärsyttävä soutu'), item('Alatalja soutu'), item('Bulgarialainen soutu')]
+    expect(names(sameLevel, 'soutu')).toEqual([
+      'Alatalja soutu',
+      'Bulgarialainen soutu',
+      'Ärsyttävä soutu',
+    ])
+  })
+
+  it('sanan alusta löytynyt osuma menee toisen sanan sisältä löytyneen edelle', () => {
+    const rows = [item('Ojentajasoutu'), item('Ärsyttävä soutu')]
+    expect(names(rows, 'soutu')).toEqual(['Ärsyttävä soutu', 'Ojentajasoutu'])
+  })
+
+  it('löytää liikkeen, kun hakusanasta puuttuu välilyönti', () => {
+    const rows = [item('Kasvoveto taljassa', ['face pull']), item('Hack-kyykky')]
+    expect(names(rows, 'facepull')).toEqual(['Kasvoveto taljassa'])
+    expect(names(rows, 'hackkyykky')).toEqual(['Hack-kyykky'])
+  })
+
+  it('tasan hakusanaa vastaava alias voittaa toisen sanan sisältä löytyvän nimen', () => {
+    const rows = [item('Pendlay-soutu'), item('Maastaveto', ['deadlift', 'dl'])]
+    expect(names(rows, 'dl')).toEqual(['Maastaveto', 'Pendlay-soutu'])
   })
 })
 

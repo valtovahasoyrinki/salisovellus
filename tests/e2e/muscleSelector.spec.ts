@@ -92,10 +92,7 @@ test('napautus kiertää tilan ja sirusta voi poistaa valinnan', async ({ page }
   await expect(page.getByRole('button', { name: 'Poista Rinta', exact: true })).toBeHidden()
 
   // Peilattu puoli valitsee saman lihaksen.
-  const mirrored = page.locator('[data-muscle="chest"]').last()
-  const box = await mirrored.boundingBox()
-  if (box === null) throw new Error('Peilattua rintamuotoa ei löytynyt')
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  await tapMuscle(page, 'chest', true)
   await expect(page.getByRole('button', { name: 'Poista Rinta', exact: true })).toBeVisible()
 
   // Sirusta poisto.

@@ -65,8 +65,19 @@ export function MuscleMap({ primary, secondary, intensity, view, className = '' 
     if (primaryIds.has(muscle)) return { fill: 'var(--accent)', fillOpacity: 1 }
     if (secondaryIds.has(muscle)) return { fill: 'var(--muscle-secondary)', fillOpacity: 1 }
     const load = loads.get(muscle) ?? 0
-    // Lämpökartta: pienikin kuormitus näkyy, täysi kuormitus on aksentti.
-    if (load > 0) return { fill: 'var(--accent)', fillOpacity: 0.22 + 0.78 * load }
+    /*
+      Lämpökartta sekoittaa treenaamattoman sävyn ja aksentin: pienikin
+      kuormitus näkyy ja täysi kuormitus on aksentti. Peittävyyden säätäminen
+      ei toimi, koska vaaleassa teemassa aksentti on tummempi kuin vartalo –
+      silloin kevyt kuormitus näyttäisi vaaleammalta kuin treenaamaton lihas.
+    */
+    if (load > 0) {
+      const mix = Math.round(22 + 78 * load)
+      return {
+        fill: `color-mix(in oklab, var(--accent) ${mix}%, var(--muscle-idle))`,
+        fillOpacity: 1,
+      }
+    }
     return { fill: 'var(--muscle-idle)', fillOpacity: 1 }
   }
 

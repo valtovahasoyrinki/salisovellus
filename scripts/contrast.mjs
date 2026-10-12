@@ -103,6 +103,19 @@ const PAIRS = [
   ['--warn', '--surface-1'],
 ]
 
+/*
+  Ei-tekstin kontrasti (WCAG 1.4.11, 3:1): lihaskartta on syöttökomponentti,
+  jonka tilat pitää erottaa. Kolmen tilan mahtuminen rungon ja aksentin väliin
+  rajaa suhteen noin 2,3:1:een, joten näille pareille käytetään omaa rajaa ja
+  valinta kerrotaan lisäksi tekstinä (sirut ja aria-live).
+*/
+const UI_PAIRS = [
+  ['--muscle-idle', '--body-fill'],
+  ['--muscle-secondary', '--muscle-idle'],
+  ['--accent', '--muscle-secondary'],
+]
+const UI_MIN = 2.2
+
 let failures = 0
 for (const [selector, label] of [
   [":root,\n:root[data-theme='dark']", 'tumma'],
@@ -118,6 +131,18 @@ for (const [selector, label] of [
     }
     // AA: normaali teksti 4,5:1. Isot numerot ja ikonit 3:1, mutta tavoitellaan 4,5:1.
     const ok = ratio >= 4.5
+    if (!ok) failures += 1
+    console.log(`  ${ok ? 'OK ' : 'EI '} ${ratio.toFixed(2).padStart(5)}:1  ${fg} / ${bg}`)
+  }
+
+  console.log('  -- lihaskartan tilat (ei-teksti, raja 2,2:1) --')
+  for (const [fg, bg] of UI_PAIRS) {
+    const ratio = contrast(tokens, fg, bg)
+    if (ratio === null) {
+      console.log(`  ?      ${fg} / ${bg}`)
+      continue
+    }
+    const ok = ratio >= UI_MIN
     if (!ok) failures += 1
     console.log(`  ${ok ? 'OK ' : 'EI '} ${ratio.toFixed(2).padStart(5)}:1  ${fg} / ${bg}`)
   }

@@ -9,18 +9,19 @@
  * muokkaus (lisäys, poisto, korvaus tai vierekkäisten merkkien vaihto),
  * jotta "pulldwon" löytää "pulldown".
  *
- * Tulosjärjestys on tasoittain, pienin taso ensin, ja saman tason sisällä
- * nimen mukaan (`fi`):
- * - taso 0: normalisoitu nimi **alkaa** koko normalisoidulla hakusanalla
- * - taso 1: normalisoitu nimi **sisältää** koko normalisoidun hakusanan
- * - taso 2: kaikki sanat osuvat tarkasti ja kaikki löytyvät nimestä
- * - taso 3: kaikki sanat osuvat tarkasti, mutta vähintään yksi vain aliaksesta
+ * Tulosjärjestys on tasoittain, pienin taso ensin:
+ * - taso 0: nimi **alkaa** hakusanalla tai jokin alias on **tasan** hakusana
+ * - taso 1: nimi sisältää hakusanan sanan alusta, tai alias alkaa hakusanalla
+ * - taso 2: nimi sisältää hakusanan toisen sanan sisältä, tai kaikki sanat
+ *   löytyvät nimestä
+ * - taso 3: vähintään yksi sana löytyi vain aliaksesta
  * - taso 4: jokin sana osui vain kirjoitusvirheellä
  *
- * Saman tason sisällä ratkaisee ensin aliaksen osuvuus (alias on tasan
- * hakusana → alias alkaa hakusanalla → alias sisältää sen → ei aliasosumaa) ja
- * vasta sitten nimi. Ilman tätä "pec dec" nostaisi ensimmäiseksi liikkeen,
- * jonka alias on "reverse pec deck", eikä sitä, jonka alias on "pec dec".
+ * Saman tason sisällä ratkaisee ensin **heikkojen osumien määrä** (sana löytyi
+ * toisen sanan sisältä tai vasta välilyönnit poistamalla), sitten aliaksen
+ * osuvuus koko hakusanaan ja vasta lopuksi nimi (`fi`). Ilman heikkojen
+ * osumien painoa "lat pulldown" nostaisi ensimmäiseksi liikkeen, jonka nimessä
+ * on "ylätaljassa" (sisältää kirjaimet "lat"), eikä Ylätaljaa.
  */
 import type { MuscleId } from './types'
 
@@ -49,6 +50,17 @@ export function normalizeTerm(input: string): string {
     .replace(PUNCTUATION, ' ')
     .replace(WHITESPACE, ' ')
     .trim()
+}
+
+/**
+ * Nimen vertailuavain (uniikkius ja kaksoiskappalevaroitus). Normalisoitu muoto
+ * riittää lähes aina, mutta pelkistä välimerkeistä koostuva nimi ("--..")
+ * normalisoituu tyhjäksi – silloin verrataan trimmattua pienaakkosmuotoa, jotta
+ * varoitus ja luonnin esto ovat samaa mieltä.
+ */
+export function nameKey(name: string): string {
+  const normalized = normalizeTerm(name)
+  return normalized === '' ? name.trim().toLocaleLowerCase('fi') : normalized
 }
 
 export interface SearchableExercise {
@@ -113,6 +125,8 @@ interface NormalizedAlias {
   /** Alkuperäinen kirjoitusasu, joka näytetään rivillä ("myös: pec deck"). */
   original: string
   normalized: string
+  /** Ilman välilyöntejä, jotta "pecdec" löytää aliaksen "pec dec". */
+  squashed: string
   words: string[]
 }
 
@@ -120,9 +134,12 @@ interface Candidate<T> {
   exercise: T
   name: string
   normalizedName: string
+  squashedName: string
   nameWords: string[]
   aliases: NormalizedAlias[]
 }
+
+const squash = (value: string): string => value.replaceAll(' ', '')
 
 function toCandidate<T extends SearchableExercise>(exercise: T): Candidate<T> {
   const normalizedName = normalizeTerm(exercise.name)
@@ -130,10 +147,11 @@ function toCandidate<T extends SearchableExercise>(exercise: T): Candidate<T> {
     exercise,
     name: exercise.name,
     normalizedName,
+    squashedName: squash(normalizedName),
     nameWords: words(normalizedName),
     aliases: (exercise.aliases ?? []).map((alias) => {
       const normalized = normalizeTerm(alias)
-      return { original: alias, normalized, words: words(normalized) }
+      return { original: alias, normalized, squashed: squash(normalized), words: words(normalized) }
     }),
   }
 }
@@ -143,34 +161,64 @@ interface WordHit {
   inName: boolean
   /** Osuma syntyi vain yhden muokkauksen päästä. */
   typo: boolean
+  /**
+   * Heikko osuma: sana löytyi toisen sanan sisältä ("lat" sanassa
+   * "ylataljassa") tai vasta välilyönnit poistamalla. Heikko osuma ei estä
+   * löytymistä mutta pudottaa liikkeen tulosten hännille.
+   */
+  weak: boolean
   /** Alias, josta osuma tuli, kun nimi ei osunut. */
   alias?: string
 }
 
+/** Osuuko sana sanan alkuun (vahva) vai toisen sanan sisään (heikko)? */
+function isMidWord(haystack: string, word: string): boolean {
+  const index = haystack.indexOf(word)
+  return index > 0 && haystack[index - 1] !== ' '
+}
+
 /**
  * Etsii yhden hakusanan osuman: ensin tarkka osuma nimestä, sitten tarkka
- * osuma aliaksista, ja vasta lopuksi yhden muokkauksen päässä oleva sana
- * (ensin nimestä, sitten aliaksista).
+ * osuma aliaksista, sitten osuma ilman välilyöntejä ("facepull"), ja vasta
+ * lopuksi yhden muokkauksen päässä oleva sana (ensin nimestä, sitten
+ * aliaksista).
  */
 function matchWord<T>(candidate: Candidate<T>, word: string): WordHit | undefined {
-  if (candidate.normalizedName.includes(word)) return { inName: true, typo: false }
+  if (candidate.normalizedName.includes(word)) {
+    return { inName: true, typo: false, weak: isMidWord(candidate.normalizedName, word) }
+  }
 
   for (const alias of candidate.aliases) {
     if (alias.normalized.includes(word)) {
-      return { inName: false, typo: false, alias: alias.original }
+      return {
+        inName: false,
+        typo: false,
+        weak: isMidWord(alias.normalized, word),
+        alias: alias.original,
+      }
+    }
+  }
+
+  const squashedWord = squash(word)
+  if (candidate.squashedName.includes(squashedWord)) {
+    return { inName: true, typo: false, weak: true }
+  }
+  for (const alias of candidate.aliases) {
+    if (alias.squashed.includes(squashedWord)) {
+      return { inName: false, typo: false, weak: true, alias: alias.original }
     }
   }
 
   if (word.length < TYPO_MIN_LENGTH) return undefined
 
   for (const nameWord of candidate.nameWords) {
-    if (isWithinOneEdit(word, nameWord)) return { inName: true, typo: true }
+    if (isWithinOneEdit(word, nameWord)) return { inName: true, typo: true, weak: false }
   }
 
   for (const alias of candidate.aliases) {
     for (const aliasWord of alias.words) {
       if (isWithinOneEdit(word, aliasWord)) {
-        return { inName: false, typo: true, alias: alias.original }
+        return { inName: false, typo: true, weak: false, alias: alias.original }
       }
     }
   }
@@ -181,7 +229,12 @@ function matchWord<T>(candidate: Candidate<T>, word: string): WordHit | undefine
 interface Ranked<T> {
   exercise: T
   level: number
-  /** 0 = alias on tasan hakusana, 1 = alkaa sillä, 2 = sisältää, 3 = ei osumaa. */
+  /** Montako hakusanaa osui vain toisen sanan sisältä tai välilyönnit poistaen. */
+  weakWords: number
+  /**
+   * 0 = alias on tasan hakusana, 1 = yhden muokkauksen päässä siitä,
+   * 2 = alkaa hakusanalla, 3 = sisältää sen, 4 = ei osumaa koko hakusanaan.
+   */
   aliasLevel: number
   name: string
   aliasHit: string | undefined
@@ -192,12 +245,20 @@ function bestAlias<T>(
   candidate: Candidate<T>,
   query: string,
 ): { level: number; alias: string | undefined } {
-  let level = 3
+  let level = 4
   let alias: string | undefined
   for (const candidateAlias of candidate.aliases) {
     const normalized = candidateAlias.normalized
     const current =
-      normalized === query ? 0 : normalized.startsWith(query) ? 1 : normalized.includes(query) ? 2 : 3
+      normalized === query
+        ? 0
+        : isWithinOneEdit(normalized, query)
+          ? 1
+          : normalized.startsWith(query)
+            ? 2
+            : normalized.includes(query)
+              ? 3
+              : 4
     if (current < level) {
       level = current
       alias = candidateAlias.original
@@ -214,32 +275,39 @@ function rank<T>(
 ): Ranked<T> | undefined {
   let allInName = true
   let anyTypo = false
+  let weakWords = 0
   let aliasHit: string | undefined
 
   for (const word of queryWords) {
     const hit = matchWord(candidate, word)
     if (!hit) return undefined
     if (hit.typo) anyTypo = true
+    if (hit.weak) weakWords += 1
     if (!hit.inName) {
       allInName = false
       if (aliasHit === undefined && hit.alias !== undefined) aliasHit = hit.alias
     }
   }
 
+  const best = bestAlias(candidate, query)
+  const nameIndex = candidate.normalizedName.indexOf(query)
+  const nameAtWordStart = nameIndex === 0 || (nameIndex > 0 && candidate.normalizedName[nameIndex - 1] === ' ')
+
   const level = anyTypo
     ? 4
-    : candidate.normalizedName.startsWith(query)
+    : // Tasan hakusanaa vastaava alias on yhtä vahva signaali kuin nimen alku.
+      candidate.normalizedName.startsWith(query) || best.level === 0
       ? 0
-      : candidate.normalizedName.includes(query)
+      : nameAtWordStart || best.level === 2
         ? 1
-        : allInName
+        : nameIndex >= 0 || allInName
           ? 2
           : 3
 
-  const best = bestAlias(candidate, query)
   return {
     exercise: candidate.exercise,
     level,
+    weakWords,
     aliasLevel: best.level,
     name: candidate.name,
     // Näytetään osuvin alias, ei vain ensimmäistä sanaosumaa.
@@ -279,7 +347,10 @@ export function searchExercises<T extends SearchableExercise>(
   return ranked
     .sort(
       (a, b) =>
-        a.level - b.level || a.aliasLevel - b.aliasLevel || a.name.localeCompare(b.name, 'fi'),
+        a.level - b.level ||
+        a.weakWords - b.weakWords ||
+        a.aliasLevel - b.aliasLevel ||
+        a.name.localeCompare(b.name, 'fi'),
     )
     .map(toMatch)
 }
@@ -314,10 +385,11 @@ export function findNameMatches<T extends SearchableExercise>(
   items: readonly T[],
   name: string,
 ): T[] {
-  const target = normalizeTerm(name)
+  const target = nameKey(name)
+  if (target === '') return []
   return items.filter(
     (item) =>
-      normalizeTerm(item.name) === target ||
-      (item.aliases ?? []).some((alias) => normalizeTerm(alias) === target),
+      nameKey(item.name) === target ||
+      (item.aliases ?? []).some((alias) => nameKey(alias) === target),
   )
 }

@@ -131,6 +131,16 @@ export function WorkoutScreen() {
   }
 
   const addToWorkout = (exercise: Exercise, message: string): void => {
+    /*
+      Sama liike ei mene treeniin kahdesti: valitsin merkitsee sen jo
+      lisätyksi, ja toinen kortti jakaisi saman ankkurin ja tuplaisi
+      tavoitesarjat. Näytetään olemassa oleva kortti sen sijaan.
+    */
+    if (detail.exercises.some((item) => item.exercise.id === exercise.id)) {
+      toast.show(`${exercise.name} on jo tässä treenissä`)
+      scrollIntoViewWhenReady(`liike-${exercise.id}`, !reducedMotion)
+      return
+    }
     void addExerciseToSession(sessionId, exercise.id).then(() => {
       toast.show(`${exercise.name} ${message}`, { tone: 'good' })
       scrollIntoViewWhenReady(`liike-${exercise.id}`, !reducedMotion)

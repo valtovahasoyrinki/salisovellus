@@ -46,20 +46,55 @@ export async function resetDatabase(page: Page): Promise<void> {
 }
 
 /**
- * Napauttaa lihasmuodon keskikohtaa lihaskartalla.
+ * Napauttaa lihasmuotoa kartalla sieltä, mistä käyttäjä sitä napauttaisi:
+ * pisteestä, joka on **selaimen mukaan** muodon täytön sisällä.
  *
- * `scrollIntoViewIfNeeded` odottaa, että elementti on näkyvä ja vakaa (paneelin
- * jousianimaatio on ohi), ja napautus tehdään hiirellä laskettuun pisteeseen:
- * osuma lasketaan tarkoituksella SVG-juuressa koordinaateista, joten
- * päällimmäinen muoto (esim. lähentäjät etureiden päällä) ei saa estää
- * napautusta niin kuin Playwrightin oma osumatarkistus tekisi.
+ * Rajauslaatikon keskipiste ei riitä – kaarevalla kaistaleella (hauis, leveä
+ * selkälihas) se voi olla muodon ulkopuolella, jopa naapurilihaksen sisällä.
+ * Piste etsitään `isPointInFill`-kyselyllä ja muunnetaan ruutukoordinaateiksi
+ * elementin omalla matriisilla, joten testi ei nojaa sovelluksen omaan
+ * osumalaskentaan. Napautus tehdään hiirellä, koska osuma lasketaan
+ * SVG-juuressa koordinaateista eikä päällimmäisestä elementistä.
  */
-export async function tapMuscle(page: Page, muscle: string): Promise<void> {
-  const shape = page.locator(`[data-muscle="${muscle}"]`).first()
+export async function tapMuscle(page: Page, muscle: string, mirrored = false): Promise<void> {
+  const shapes = page.locator(`[data-muscle="${muscle}"]`)
+  const shape = mirrored ? shapes.last() : shapes.first()
   await shape.scrollIntoViewIfNeeded()
-  const box = await shape.boundingBox()
-  if (box === null) throw new Error(`Lihasmuotoa ${muscle} ei löytynyt kartalta`)
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+  const point = await shape.evaluate((element) => {
+    const path = element as SVGGeometryElement
+    const matrix = path.getScreenCTM()
+    if (!matrix) return null
+
+    /*
+      Piste pitää olla muodon täytön sisällä eikä minkään päälle piirretyn
+      muodon alla – muuten napautus osuisi siihen, minkä käyttäjä näkee päällä
+      (hauis on piirretty sivuolkapään päälle).
+    */
+    const siblings = [
+      ...(path.parentElement?.querySelectorAll('[data-muscle]') ?? []),
+    ] as SVGGeometryElement[]
+    const muscle = path.getAttribute('data-muscle')
+    const above = siblings
+      .slice(siblings.indexOf(path) + 1)
+      .filter((other) => other.getAttribute('data-muscle') !== muscle)
+
+    const box = path.getBBox()
+    const fractions = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.1, 0.9]
+    for (const fx of fractions) {
+      for (const fy of fractions) {
+        const candidate = new DOMPoint(box.x + box.width * fx, box.y + box.height * fy)
+        if (!path.isPointInFill(candidate)) continue
+        if (above.some((other) => other.isPointInFill(candidate))) continue
+        const screen = candidate.matrixTransform(matrix)
+        return { x: screen.x, y: screen.y }
+      }
+    }
+    return null
+  })
+
+  if (point === null) throw new Error(`Lihasmuodon ${muscle} täytöstä ei löytynyt pistettä`)
+  await page.mouse.click(point.x, point.y)
 }
 
 /** Vaihtaa lihaskartan takanäkymään (selkä, pakarat, takareidet). */

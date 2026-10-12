@@ -55,11 +55,18 @@
    * mustalle taustalle että korttipinnan päälle: pintatokenit eivät erotu
    * molemmissa. Ensisijainen lihas = --accent, toissijainen = --muscle-secondary,
    * treenaamaton = --muscle-idle; viikon lämpökartta säätää peittävyyttä.
+   *
+   * Kartta on myös syöttökomponentti (MuscleSelector), joten tilojen pitää
+   * erottua toisistaan. Kirkkaudet on jaettu tasavälein rungon ja aksentin
+   * väliin, mikä on suurin saavutettava erottelu: suhde on 2,34:1 (tumma) ja
+   * 2,28:1 (vaalea) jokaista peräkkäistä paria kohden. WCAG 1.4.11:n 3:1 ei ole
+   * kolmelle tilalle mahdollinen tällä kirkkausvälillä, joten valinta kerrotaan
+   * myös tekstinä (sirut ja aria-live) – tarkistus: node scripts/contrast.mjs.
    */
   --body-fill: oklch(19% 0.004 264);
   --body-stroke: oklch(36% 0.005 264);
-  --muscle-idle: oklch(29% 0.005 264);
-  --muscle-secondary: oklch(58% 0.01 250);
+  --muscle-idle: oklch(43.7% 0.005 264);
+  --muscle-secondary: oklch(64% 0.01 250);
 
   --shadow-sheet: 0 -8px 40px oklch(0% 0 0 / 0.7);
   --shadow-float: 0 4px 24px oklch(0% 0 0 / 0.55);
@@ -128,8 +135,8 @@
   /* Lihaskartta – perustelu tummassa lohkossa. */
   --body-fill: oklch(94% 0.003 264);
   --body-stroke: oklch(73% 0.006 264);
-  --muscle-idle: oklch(86.5% 0.005 264);
-  --muscle-secondary: oklch(62% 0.012 250);
+  --muscle-idle: oklch(69.5% 0.005 264);
+  --muscle-secondary: oklch(49.3% 0.012 250);
 
   --shadow-sheet: 0 -8px 40px oklch(20% 0.01 264 / 0.18);
   --shadow-float: 0 4px 20px oklch(20% 0.01 264 / 0.15);

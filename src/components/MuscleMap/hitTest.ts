@@ -1,17 +1,28 @@
 /**
  * Lihasmuotojen osumalaskenta (SPEC §7, PLAN §9.4).
  *
- * Lihasmuodot ovat kapeita – kyynärvarsi on noin 6 yksikköä leveä 76 yksikön
- * viewBoxissa – joten sormenpään osuma ei voi perustua polun täyttöön. Osuma
- * lasketaan puhtaana matematiikkana: jokaiselle muodolle muodostetaan polun
- * tarkasta rajauslaatikosta elliptinen osuma-alue, jota kasvatetaan näkyvää
- * muotoa suuremmaksi, ja napautus valitsee lähimmän alueen.
+ * Napautus osuu siihen lihakseen, jonka **näkyvän muodon** sisällä piste on:
+ * polut litistetään monikulmioiksi ja piste testataan niitä vasten. Jos piste
+ * osuu usean muodon sisään (lähentäjät etureiden päällä, hauis sivuolkapään
+ * päällä), voittaa viimeksi piirretty eli se, jonka käyttäjä näkee – sama
+ * sääntö kuin selaimen piirrossa.
  *
- * Tässä ei käytetä DOM-APIa (`getBBox`), koska sitä ei ole jsdomissa eikä
- * Nodessa: osumatesti on yksikkötestattavissa ilman selainta.
+ * Jos piste ei ole yhdenkään muodon sisällä, valitaan lähin muoto `SLACK`-rajan
+ * sisältä: lihakset ovat kapeita (kyynärvarsi noin 6 yksikköä 76 yksikön
+ * viewBoxissa, puhelimella ~12 px), joten sormen heitto muotojen väliin ei saa
+ * jäädä tuloksetta. Kartan ulkopuolinen napautus (pää, ruudun reuna) ei valitse
+ * mitään.
+ *
+ * Tässä ei käytetä DOM-APIa (`getBBox`, `isPointInFill`), koska niitä ei ole
+ * jsdomissa eikä Nodessa: osumalaskenta on yksikkötestattavissa ilman selainta.
  */
 import type { MuscleId } from '@/domain/types'
 import { BACK_MUSCLES, FRONT_MUSCLES, type MuscleShape } from './bodyPaths'
+
+export interface Point {
+  x: number
+  y: number
+}
 
 export interface Bounds {
   minX: number
@@ -26,221 +37,224 @@ const SEGMENT_PATTERN = /([a-zA-Z])([^a-zA-Z]*)/g
 /** Luku desimaaleineen, etumerkkeineen ja eksponenttimuodossa. */
 const NUMBER_PATTERN = /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/g
 
-/**
- * Toisen asteen Bézierin ääriarvo yhdellä akselilla analyyttisesti:
- * t = (p0 − p1) / (p0 − 2·p1 + p2), mukaan vain jos 0 < t < 1.
- */
-function quadraticExtremum(p0: number, p1: number, p2: number): number | undefined {
-  const denominator = p0 - 2 * p1 + p2
-  if (denominator === 0) return undefined
-  const t = (p0 - p1) / denominator
-  if (t <= 0 || t >= 1) return undefined
-  const u = 1 - t
-  return u * u * p0 + 2 * u * t * p1 + t * t * p2
-}
+/** Toisen asteen käyrä litistetään näin moneen janaan. */
+const CURVE_STEPS = 8
+
+/** Keskilinja: muodot on piirretty vasemmalle puolelle ja peilataan ruudulla. */
+const MIRROR_AXIS = 50
 
 /**
- * Polun tarkka rajauslaatikko. Tuetut komennot ovat `M L H V Q Z` (isot ja
- * pienet kirjaimet, implisiittiset lineto-koordinaatit `M`:n jälkeen ja
- * implisiittiset komentotoistot) – juuri ne, joista `bodyPaths.ts` koostuu.
- *
- * Tuntemattoman komennon (esim. `C` tai `A`) numeroargumentit otetaan mukaan
- * pistepareina. Se on varovainen likiarvo: kontrollipisteet ovat käyrän
- * ulkopuolella, joten laatikko voi olla todellista suurempi mutta ei koskaan
- * pienempi.
+ * Kuinka kauas näkyvän muodon ulkopuolelta osuma vielä hyväksytään
+ * (viewBox-yksikköä, noin 2 px puhelimella). Kattaa muotojen väliset raot ja
+ * sormen heiton, mutta jättää pään ja ruudun reunat valinnan ulkopuolelle.
  */
-export function pathBounds(d: string): Bounds {
-  let minX = Number.POSITIVE_INFINITY
-  let minY = Number.POSITIVE_INFINITY
-  let maxX = Number.NEGATIVE_INFINITY
-  let maxY = Number.NEGATIVE_INFINITY
+const SLACK = 4
 
-  const include = (px: number, py: number): void => {
-    minX = Math.min(minX, px)
-    minY = Math.min(minY, py)
-    maxX = Math.max(maxX, px)
-    maxY = Math.max(maxY, py)
-  }
-
+/**
+ * Litistää polun monikulmioiksi (yksi per alipolku). Tuetut komennot ovat
+ * `M L H V Q Z` (isot ja pienet kirjaimet, implisiittiset lineto-koordinaatit
+ * `M`:n jälkeen ja implisiittiset komentotoistot) – juuri ne, joista
+ * `bodyPaths.ts` koostuu. Tuntemattoman komennon (esim. `C`) koordinaattiparit
+ * otetaan mukaan janoina: tulos on karkeampi mutta ei koskaan tyhjä.
+ */
+export function flattenPath(d: string): Point[][] {
+  const polygons: Point[][] = []
+  let current: Point[] = []
   let x = 0
   let y = 0
   let startX = 0
   let startY = 0
 
+  const lineTo = (nextX: number, nextY: number): void => {
+    current.push({ x: nextX, y: nextY })
+    x = nextX
+    y = nextY
+  }
+
+  const quadraticTo = (controlX: number, controlY: number, endX: number, endY: number): void => {
+    const fromX = x
+    const fromY = y
+    for (let step = 1; step <= CURVE_STEPS; step += 1) {
+      const t = step / CURVE_STEPS
+      const u = 1 - t
+      current.push({
+        x: u * u * fromX + 2 * u * t * controlX + t * t * endX,
+        y: u * u * fromY + 2 * u * t * controlY + t * t * endY,
+      })
+    }
+    x = endX
+    y = endY
+  }
+
+  const closeSubpath = (): void => {
+    if (current.length >= 3) polygons.push(current)
+    current = []
+  }
+
   for (const segment of d.matchAll(SEGMENT_PATTERN)) {
     const command = segment[1]
     const args = [...segment[2].matchAll(NUMBER_PATTERN)].map((value) => Number(value[0]))
     const relative = command === command.toLowerCase()
-    const key = command.toUpperCase()
+    const letter = command.toUpperCase()
 
-    switch (key) {
+    switch (letter) {
       case 'M':
       case 'L': {
         for (let i = 0; i + 1 < args.length; i += 2) {
-          x = relative ? x + args[i] : args[i]
-          y = relative ? y + args[i + 1] : args[i + 1]
-          include(x, y)
-          // Vain `M`:n ensimmäinen koordinaattipari aloittaa alipolun, loput ovat lineto.
-          if (i === 0 && key === 'M') {
-            startX = x
-            startY = y
+          const nextX = relative ? x + args[i] : args[i]
+          const nextY = relative ? y + args[i + 1] : args[i + 1]
+          // Vain `M`:n ensimmäinen pari aloittaa alipolun, loput ovat lineto.
+          if (i === 0 && letter === 'M') {
+            closeSubpath()
+            startX = nextX
+            startY = nextY
           }
+          lineTo(nextX, nextY)
         }
         break
       }
       case 'H': {
-        for (const arg of args) {
-          x = relative ? x + arg : arg
-          include(x, y)
-        }
+        for (const arg of args) lineTo(relative ? x + arg : arg, y)
         break
       }
       case 'V': {
-        for (const arg of args) {
-          y = relative ? y + arg : arg
-          include(x, y)
-        }
+        for (const arg of args) lineTo(x, relative ? y + arg : arg)
         break
       }
       case 'Q': {
         for (let i = 0; i + 3 < args.length; i += 4) {
-          const controlX = relative ? x + args[i] : args[i]
-          const controlY = relative ? y + args[i + 1] : args[i + 1]
-          const endX = relative ? x + args[i + 2] : args[i + 2]
-          const endY = relative ? y + args[i + 3] : args[i + 3]
-          include(endX, endY)
-          const peakX = quadraticExtremum(x, controlX, endX)
-          if (peakX !== undefined) include(peakX, y)
-          const peakY = quadraticExtremum(y, controlY, endY)
-          if (peakY !== undefined) include(x, peakY)
-          x = endX
-          y = endY
+          quadraticTo(
+            relative ? x + args[i] : args[i],
+            relative ? y + args[i + 1] : args[i + 1],
+            relative ? x + args[i + 2] : args[i + 2],
+            relative ? y + args[i + 3] : args[i + 3],
+          )
         }
         break
       }
       case 'Z': {
+        closeSubpath()
         x = startX
         y = startY
         break
       }
       default: {
         for (let i = 0; i + 1 < args.length; i += 2) {
-          const px = relative ? x + args[i] : args[i]
-          const py = relative ? y + args[i + 1] : args[i + 1]
-          include(px, py)
-          if (i + 2 >= args.length) {
-            x = px
-            y = py
-          }
+          lineTo(relative ? x + args[i] : args[i], relative ? y + args[i + 1] : args[i + 1])
         }
       }
     }
   }
 
-  if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
-    return { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+  closeSubpath()
+  return polygons
+}
+
+/** Polun tarkka rajauslaatikko litistetystä muodosta. */
+export function pathBounds(d: string): Bounds {
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+
+  for (const polygon of flattenPath(d)) {
+    for (const point of polygon) {
+      minX = Math.min(minX, point.x)
+      minY = Math.min(minY, point.y)
+      maxX = Math.max(maxX, point.x)
+      maxY = Math.max(maxY, point.y)
+    }
   }
+
+  if (!Number.isFinite(minX)) return { minX: 0, minY: 0, maxX: 0, maxY: 0 }
   return { minX, minY, maxX, maxY }
 }
 
-export interface MuscleHitArea {
+export interface MuscleHitShape {
   muscle: MuscleId
-  cx: number
-  cy: number
-  rx: number
-  ry: number
+  polygons: Point[][]
 }
 
-/**
- * Osuma-alue on näkyvää muotoa leveämpi, koska lihakset ovat kapeita ja korkeita:
- * leveyttä kasvatetaan enemmän kuin korkeutta, ja pienin säde pitää huolen siitä,
- * että kyynärvarren kaltainen kaistale on sormelle osuttava.
- */
-const WIDTH_FACTOR = 1.6
-const HEIGHT_FACTOR = 1.15
-const MIN_RADIUS = 5
-
-/** Keskilinja: muodot on piirretty vasemmalle puolelle ja peilataan ruudulla. */
-const MIRROR_AXIS = 50
-
-/*
-  Kuinka kauas alueen ulkopuolelta osuma vielä hyväksytään (normalisoitu
-  etäisyys, 1 = alueen reuna). Yksi vartalonäkymä on puhelimella noin 150 px
-  leveä, joten yksi viewBox-yksikkö on vain ~2 px: ilman liukumaa sormen 15 px
-  heitto kapean lihaksen kohdalla ei valitsisi mitään. Liukuma ei muuta sitä,
-  mikä lihas voittaa – lähin voittaa aina – vaan vain sitä, milloin napautus
-  menee ohi koko kartasta (esim. pää tai ruudun reuna).
-*/
-const SLACK = 2.5
-
-function unionBounds(a: Bounds, b: Bounds): Bounds {
-  return {
-    minX: Math.min(a.minX, b.minX),
-    minY: Math.min(a.minY, b.minY),
-    maxX: Math.max(a.maxX, b.maxX),
-    maxY: Math.max(a.maxY, b.maxY),
-  }
-}
-
-/**
- * Elliptiset osuma-alueet muotolistasta. Jos samalle lihakselle on useita
- * muotoja samassa näkymässä, niiden rajauslaatikot yhdistetään yhdeksi alueeksi.
- */
-export function buildHitAreas(shapes: readonly MuscleShape[]): MuscleHitArea[] {
-  const merged = new Map<MuscleId, Bounds>()
-  for (const shape of shapes) {
-    const bounds = pathBounds(shape.d)
-    const existing = merged.get(shape.muscle)
-    merged.set(shape.muscle, existing === undefined ? bounds : unionBounds(existing, bounds))
-  }
-
-  return [...merged].map(([muscle, bounds]) => {
-    const halfWidth = (bounds.maxX - bounds.minX) / 2
-    const halfHeight = (bounds.maxY - bounds.minY) / 2
-    return {
-      muscle,
-      cx: (bounds.minX + bounds.maxX) / 2,
-      cy: (bounds.minY + bounds.maxY) / 2,
-      rx: Math.max(halfWidth * WIDTH_FACTOR, MIN_RADIUS),
-      ry: Math.max(halfHeight * HEIGHT_FACTOR, MIN_RADIUS),
+/** Säteenheitto: onko piste monikulmion sisällä. */
+function pointInPolygon(point: Point, polygon: Point[]): boolean {
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const a = polygon[i]
+    const b = polygon[j]
+    const crosses = a.y > point.y !== b.y > point.y
+    if (crosses && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside
     }
-  })
+  }
+  return inside
+}
+
+function distanceToSegment(point: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lengthSquared = dx * dx + dy * dy
+  if (lengthSquared === 0) return Math.hypot(point.x - a.x, point.y - a.y)
+  const raw = ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared
+  const t = Math.min(1, Math.max(0, raw))
+  return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy))
+}
+
+/** Etäisyys muotoon: 0 jos piste on sen sisällä, muuten lähimmälle reunalle. */
+export function distanceToShape(point: Point, shape: MuscleHitShape): number {
+  let best = Number.POSITIVE_INFINITY
+  for (const polygon of shape.polygons) {
+    if (pointInPolygon(point, polygon)) return 0
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+      best = Math.min(best, distanceToSegment(point, polygon[j], polygon[i]))
+    }
+  }
+  return best
+}
+
+/**
+ * Osumamuodot muotolistasta: saman lihaksen useat polut yhdistetään. Lista
+ * säilyy piirtojärjestyksessä, jota `pickMuscle` käyttää päällekkäisyyksiin.
+ */
+export function buildHitShapes(shapes: readonly MuscleShape[]): MuscleHitShape[] {
+  const merged = new Map<MuscleId, Point[][]>()
+  for (const shape of shapes) {
+    const polygons = merged.get(shape.muscle) ?? []
+    polygons.push(...flattenPath(shape.d))
+    merged.set(shape.muscle, polygons)
+  }
+
+  return [...merged].map(([muscle, polygons]) => ({ muscle, polygons }))
 }
 
 /**
  * Napautettu lihas viewBox-koordinaateista. Peilattu puoli normalisoidaan
  * keskilinjan yli, jolloin kumpi tahansa käsi tai jalka valitsee saman lihaksen.
- * Valituksi tulee alue, jonka normalisoitu etäisyys on pienin ja enintään
- * `SLACK`; tasatuloksessa pienempi alue voittaa, jotta pieni lihas ei jää ison
- * sisään. Muodon keskipisteen etäisyys on tasan 0, joten muodon keskeltä
- * napautus valitsee aina juuri sen lihaksen.
  */
 export function pickMuscle(
   x: number,
   y: number,
-  areas: readonly MuscleHitArea[],
+  shapes: readonly MuscleHitShape[],
 ): MuscleId | undefined {
-  const normalizedX = x > MIRROR_AXIS ? 2 * MIRROR_AXIS - x : x
-  let best: MuscleHitArea | undefined
+  const point: Point = { x: x > MIRROR_AXIS ? 2 * MIRROR_AXIS - x : x, y }
+
+  let best: MuscleHitShape | undefined
   let bestDistance = Number.POSITIVE_INFINITY
 
-  for (const area of areas) {
-    const dx = (normalizedX - area.cx) / area.rx
-    const dy = (y - area.cy) / area.ry
-    const distance = dx * dx + dy * dy
+  for (const shape of shapes) {
+    const distance = distanceToShape(point, shape)
     if (distance > SLACK) continue
-    if (distance < bestDistance) {
-      best = area
+    /*
+      `<=` tarkoittaa, että yhtä lähellä olevista voittaa listan viimeinen eli
+      päällimmäinen muoto. Juuri sen käyttäjä näkee napautuskohdassa.
+    */
+    if (distance <= bestDistance) {
+      best = shape
       bestDistance = distance
-      continue
-    }
-    if (distance === bestDistance && best !== undefined && area.rx * area.ry < best.rx * best.ry) {
-      best = area
     }
   }
 
   return best?.muscle
 }
 
-export const FRONT_HIT_AREAS: MuscleHitArea[] = buildHitAreas(FRONT_MUSCLES)
-export const BACK_HIT_AREAS: MuscleHitArea[] = buildHitAreas(BACK_MUSCLES)
+export const FRONT_HIT_SHAPES: MuscleHitShape[] = buildHitShapes(FRONT_MUSCLES)
+export const BACK_HIT_SHAPES: MuscleHitShape[] = buildHitShapes(BACK_MUSCLES)

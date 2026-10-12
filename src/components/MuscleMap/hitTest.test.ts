@@ -1,168 +1,199 @@
 import { describe, expect, it } from 'vitest'
-import { MUSCLE_ORDER, muscleLabel } from '@/domain/muscles'
+import { MUSCLE_LABELS, muscleLabel } from '@/domain/muscles'
 import type { MuscleId } from '@/domain/types'
-import { BACK_MUSCLES, FRONT_MUSCLES, type MuscleShape } from './bodyPaths'
+import { BACK_MUSCLES, FRONT_MUSCLES } from './bodyPaths'
 import {
-  BACK_HIT_AREAS,
-  FRONT_HIT_AREAS,
-  buildHitAreas,
+  BACK_HIT_SHAPES,
+  FRONT_HIT_SHAPES,
+  buildHitShapes,
+  distanceToShape,
+  flattenPath,
   pathBounds,
   pickMuscle,
-  type MuscleHitArea,
+  type MuscleHitShape,
+  type Point,
 } from './hitTest'
 
-/** Muodon rajauslaatikon keskipiste – sama piste, jota Playwright napauttaa. */
-function shapeCenter(shape: MuscleShape): { x: number; y: number } {
-  const bounds = pathBounds(shape.d)
-  return { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 }
+/** Onko piste muodon näkyvän täytön sisällä. */
+const inside = (point: Point, shape: MuscleHitShape): boolean =>
+  distanceToShape(point, shape) === 0
+
+/**
+ * Ruudukko muodon sisäpisteistä. Näitä pisteitä käyttäjä oikeasti napauttaa,
+ * kun hän osuu näkyvään lihakseen – ei pelkkää rajauslaatikon keskipistettä.
+ */
+function interiorPoints(shape: MuscleHitShape, step = 1): Point[] {
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+  for (const polygon of shape.polygons) {
+    for (const point of polygon) {
+      minX = Math.min(minX, point.x)
+      minY = Math.min(minY, point.y)
+      maxX = Math.max(maxX, point.x)
+      maxY = Math.max(maxY, point.y)
+    }
+  }
+
+  const points: Point[] = []
+  for (let x = minX; x <= maxX; x += step) {
+    for (let y = minY; y <= maxY; y += step) {
+      const point = { x, y }
+      if (inside(point, shape)) points.push(point)
+    }
+  }
+  return points
 }
 
-describe('pathBounds', () => {
-  it('laskee suorakaiteen rajauslaatikon komennoista M, H ja V', () => {
-    expect(pathBounds('M10 10H20V20Z')).toEqual({ minX: 10, minY: 10, maxX: 20, maxY: 20 })
+describe('polun litistys', () => {
+  it('litistää suorakaiteen monikulmioksi', () => {
+    expect(flattenPath('M10 10H20V20Z')).toEqual([
+      [
+        { x: 10, y: 10 },
+        { x: 20, y: 10 },
+        { x: 20, y: 20 },
+      ],
+    ])
   })
 
-  it('ottaa toisen asteen käyrän ääriarvon mukaan, kun se on välillä 0–1', () => {
-    // Kontrollipiste on y = 20, mutta käyrä kaartaa vain puoleen väliin (y = 10).
-    expect(pathBounds('M0 0Q10 20 20 0')).toEqual({ minX: 0, minY: 0, maxX: 20, maxY: 10 })
-  })
-
-  it('jättää ääriarvon pois, kun t on välin 0–1 ulkopuolella', () => {
-    // Molemmilla akseleilla t on 0 tai 1, joten laatikko tulee pelkistä päätepisteistä.
-    expect(pathBounds('M0 0Q20 0 20 20')).toEqual({ minX: 0, minY: 0, maxX: 20, maxY: 20 })
+  it('litistää toisen asteen käyrän janoiksi käyrän muotoa seuraten', () => {
+    const [polygon] = flattenPath('M0 0Q10 20 20 0Z')
+    expect(polygon).toBeDefined()
+    // Käyrän huippu on puolivälissä y = 10, ei kontrollipisteen y = 20.
+    const peak = Math.max(...(polygon ?? []).map((point) => point.y))
+    expect(peak).toBeCloseTo(10, 5)
   })
 
   it('tukee pieniä kirjaimia ja implisiittisiä lineto-koordinaatteja', () => {
-    // m10 10 → (10,10), implisiittinen lineto 5 5 → (15,15), h5 → (20,15), v-10 → (20,5).
     expect(pathBounds('m10 10 5 5h5v-10z')).toEqual({ minX: 10, minY: 5, maxX: 20, maxY: 15 })
   })
 
-  it('ottaa tuntemattoman komennon argumentit pistepareina (varovainen likiarvo)', () => {
-    // Kuubisen käyrän todellinen maksimi on y = 7,5; kontrollipisteet antavat 10.
-    expect(pathBounds('M0 0C0 10 10 10 10 0')).toEqual({ minX: 0, minY: 0, maxX: 10, maxY: 10 })
-  })
-
-  it('rajatapaus tyhjä polku: palauttaa nollalaatikon', () => {
+  it('rajatapaus tyhjä polku: ei monikulmioita eikä rajauslaatikkoa', () => {
+    expect(flattenPath('')).toEqual([])
     expect(pathBounds('')).toEqual({ minX: 0, minY: 0, maxX: 0, maxY: 0 })
   })
 
-  it('laskee oikean laatikon oikealle lihasmuodolle', () => {
-    // Epäkäs edestä: M50.2 29 → Q(40.5 31) 32.5 41.5 → L50.2 36.8 → Z.
+  it('laskee oikean rajauslaatikon oikealle lihasmuodolle', () => {
     const bounds = pathBounds('M50.2 29Q40.5 31 32.5 41.5L50.2 36.8Z')
-    expect(bounds).toEqual({ minX: 32.5, minY: 29, maxX: 50.2, maxY: 41.5 })
+    expect(bounds.minX).toBeCloseTo(32.5, 1)
+    expect(bounds.maxX).toBeCloseTo(50.2, 1)
+    expect(bounds.minY).toBeCloseTo(29, 1)
+    expect(bounds.maxY).toBeCloseTo(41.5, 1)
   })
 })
 
-describe('buildHitAreas', () => {
-  it('kasvattaa osuma-alueen näkyvää muotoa suuremmaksi', () => {
-    const [area] = buildHitAreas([{ muscle: 'forearms', d: 'M20 70H26V94H20Z' }])
-    expect(area).toBeDefined()
-    expect(area?.cx).toBeCloseTo(23)
-    expect(area?.cy).toBeCloseTo(82)
-    // Kapea muoto saa vähintään viiden yksikön säteen, eli kaksinkertaisen leveytensä.
-    expect(area?.rx).toBeCloseTo(5)
-    expect(area?.ry).toBeCloseTo(13.8)
+describe('osumamuodot', () => {
+  it('yhdistää saman lihaksen useat muodot yhdeksi osumaksi', () => {
+    const shapes = buildHitShapes([
+      { muscle: 'calves', d: 'M10 10H14V20H10Z' },
+      { muscle: 'calves', d: 'M20 10H24V20H20Z' },
+    ])
+    expect(shapes).toHaveLength(1)
+    expect(shapes[0]?.polygons).toHaveLength(2)
   })
 
-  it('yhdistää saman lihaksen useat muodot yhdeksi alueeksi', () => {
-    const areas = buildHitAreas([
-      { muscle: 'chest', d: 'M10 10H20V20H10Z' },
-      { muscle: 'chest', d: 'M30 30H40V40H30Z' },
+  it('säilyttää piirtojärjestyksen', () => {
+    const shapes = buildHitShapes([
+      { muscle: 'side_delts', d: 'M10 10H20V20H10Z' },
+      { muscle: 'biceps', d: 'M15 15H25V25H15Z' },
     ])
-    expect(areas).toHaveLength(1)
-    expect(areas[0]?.cx).toBeCloseTo(25)
-    expect(areas[0]?.cy).toBeCloseTo(25)
+    expect(shapes.map((shape) => shape.muscle)).toEqual(['side_delts', 'biceps'])
   })
 
   it('kattaa kaikki 18 lihasryhmää etu- ja takanäkymä yhdessä', () => {
     const covered = new Set<MuscleId>([
-      ...FRONT_HIT_AREAS.map((area) => area.muscle),
-      ...BACK_HIT_AREAS.map((area) => area.muscle),
+      ...FRONT_HIT_SHAPES.map((shape) => shape.muscle),
+      ...BACK_HIT_SHAPES.map((shape) => shape.muscle),
     ])
-    expect(MUSCLE_ORDER).toHaveLength(18)
-    for (const muscle of MUSCLE_ORDER) {
-      expect(covered.has(muscle), `${muscleLabel(muscle)} puuttuu osuma-alueista`).toBe(true)
+    for (const muscle of Object.keys(MUSCLE_LABELS) as MuscleId[]) {
+      expect(covered.has(muscle), muscleLabel(muscle)).toBe(true)
     }
-    expect(covered.size).toBe(18)
   })
 })
 
-describe('pickMuscle', () => {
-  it('valitsee oikean lihaksen jokaisen etumuodon keskeltä', () => {
-    for (const shape of FRONT_MUSCLES) {
-      const { x, y } = shapeCenter(shape)
-      expect(
-        pickMuscle(x, y, FRONT_HIT_AREAS),
-        `etunäkymä: ${muscleLabel(shape.muscle)} keskipisteestä (${x}, ${y})`,
-      ).toBe(shape.muscle)
-    }
-  })
+describe('napautuksen osuma', () => {
+  /*
+    Tärkein vaatimus: kun käyttäjä napauttaa näkyvää lihasta, valituksi tulee
+    juuri se lihas. Aiempi rajauslaatikkoihin perustuva malli antoi väärän
+    lihaksen jopa 44 %:lle muodon pinnasta (esim. näkyvä takaolkapää valitsi
+    ojentajan), joten jokaisen muodon sisäpisteet käydään läpi ruudukkona.
+  */
+  for (const [name, shapes, hitShapes] of [
+    ['edestä', FRONT_MUSCLES, FRONT_HIT_SHAPES],
+    ['takaa', BACK_MUSCLES, BACK_HIT_SHAPES],
+  ] as const) {
+    it(`valitsee oikean lihaksen muodon jokaisesta sisäpisteestä (${name})`, () => {
+      for (const [index, shape] of hitShapes.entries()) {
+        // Vain päällä olevat muodot voivat peittää tämän muodon pinnan.
+        const above = hitShapes.slice(index + 1)
+        const points = interiorPoints(shape)
+        expect(points.length, muscleLabel(shape.muscle)).toBeGreaterThan(0)
 
-  it('valitsee oikean lihaksen jokaisen takamuodon keskeltä', () => {
-    for (const shape of BACK_MUSCLES) {
-      const { x, y } = shapeCenter(shape)
-      expect(
-        pickMuscle(x, y, BACK_HIT_AREAS),
-        `takanäkymä: ${muscleLabel(shape.muscle)} keskipisteestä (${x}, ${y})`,
-      ).toBe(shape.muscle)
+        for (const point of points) {
+          if (above.some((other) => inside(point, other))) continue
+          expect(
+            pickMuscle(point.x, point.y, hitShapes),
+            `${muscleLabel(shape.muscle)} (${point.x}, ${point.y})`,
+          ).toBe(shape.muscle)
+        }
+      }
+      expect(shapes.length).toBeGreaterThan(0)
+    })
+  }
+
+  /*
+    Päällekkäisissä muodoissa voittaa päällimmäinen eli viimeksi piirretty –
+    juuri se, jonka käyttäjä näkee. Lähentäjät on piirretty etureiden päälle ja
+    hauis sivuolkapään päälle.
+  */
+  it.each([
+    ['adductors', 'etureiden päällä'],
+    ['biceps', 'sivuolkapään päällä'],
+  ] as const)('päällimmäinen muoto voittaa: %s (%s)', (muscle, _position) => {
+    const shape = FRONT_HIT_SHAPES.find((candidate) => candidate.muscle === muscle)
+    expect(shape).toBeDefined()
+    if (!shape) return
+    const points = interiorPoints(shape, 0.5)
+    expect(points.length).toBeGreaterThan(0)
+    for (const point of points) {
+      expect(pickMuscle(point.x, point.y, FRONT_HIT_SHAPES)).toBe(muscle)
     }
   })
 
   it('valitsee peilatulta puolelta saman lihaksen', () => {
-    for (const [shapes, areas] of [
-      [FRONT_MUSCLES, FRONT_HIT_AREAS],
-      [BACK_MUSCLES, BACK_HIT_AREAS],
-    ] as const) {
-      for (const shape of shapes) {
-        const { x, y } = shapeCenter(shape)
-        expect(
-          pickMuscle(100 - x, y, areas),
-          `peilattu puoli: ${muscleLabel(shape.muscle)}`,
-        ).toBe(pickMuscle(x, y, areas))
-      }
-    }
+    const chest = FRONT_HIT_SHAPES.find((shape) => shape.muscle === 'chest')
+    expect(chest).toBeDefined()
+    if (!chest) return
+    const others = FRONT_HIT_SHAPES.filter((shape) => shape.muscle !== 'chest')
+    // Piste, joka on vain rinnan sisällä (etuolkapää menee osin päälle).
+    const point = interiorPoints(chest).find((candidate) =>
+      others.every((other) => !inside(candidate, other)),
+    )
+    expect(point).toBeDefined()
+    if (!point) return
+    expect(pickMuscle(point.x, point.y, FRONT_HIT_SHAPES)).toBe('chest')
+    expect(pickMuscle(100 - point.x, point.y, FRONT_HIT_SHAPES)).toBe('chest')
   })
 
-  it('valitsee pienen lihaksen, joka on ison sisällä', () => {
-    // Lähentäjät ovat etureiden rajauslaatikon sisällä, mutta omasta keskeltään ne voittavat.
-    expect(pickMuscle(46.5, 143, FRONT_HIT_AREAS)).toBe('adductors')
-  })
-
-  it('osuu lihakseen myös aivan muodon vierestä', () => {
-    // x = 35 on etureiden muodon (37,4–49,2) ulkopuolella, mutta osuma-alueen sisällä.
-    expect(pickMuscle(35, 147, FRONT_HIT_AREAS)).toBe('quads')
-  })
-
-  it('sietää sormen heiton kapean lihaksen kohdalla', () => {
-    /*
-      Kyynärvarsi on vain noin 6 yksikköä leveä, mikä on puhelimella ~12 px.
-      Napautus 7 yksikköä (noin 14 px) sivussa keskilinjasta osuu silti, koska
-      lähin alue voittaa liukuman sisällä.
-    */
-    const forearms = FRONT_HIT_AREAS.find((area) => area.muscle === 'forearms')
-    expect(forearms).toBeDefined()
-    if (!forearms) return
-    expect(pickMuscle(forearms.cx - 7, forearms.cy, FRONT_HIT_AREAS)).toBe('forearms')
-    expect(pickMuscle(forearms.cx + 4, forearms.cy, FRONT_HIT_AREAS)).toBe('forearms')
+  it('osuu viereiseen lihakseen muotojen välisestä raosta', () => {
+    // Reisien väli haarasta alaspäin: molemmat reisilihakset ovat yhtä lähellä.
+    expect(['quads', 'adductors']).toContain(pickMuscle(50, 140, FRONT_HIT_SHAPES))
+    // Vatsan ja vinojen vatsalihasten väli.
+    expect(['abs', 'obliques']).toContain(pickMuscle(41, 88, FRONT_HIT_SHAPES))
+    // Kyynärvarren ja vartalon väli ei ole minkään muodon sisällä.
+    expect(pickMuscle(27, 85, FRONT_HIT_SHAPES)).toBeDefined()
   })
 
   it('rajatapaus kartan ulkopuolinen piste: palauttaa undefined', () => {
-    // Pään kohta ja kartan vasen yläkulma eivät ole minkään lihaksen liukumalla.
-    expect(pickMuscle(13, 5, FRONT_HIT_AREAS)).toBeUndefined()
-    expect(pickMuscle(13, 5, BACK_HIT_AREAS)).toBeUndefined()
-    expect(pickMuscle(45, 14, FRONT_HIT_AREAS)).toBeUndefined()
+    // Pää, kaulan yläpuoli ja ruudun vasen reuna eivät valitse lihasta.
+    expect(pickMuscle(45, 12, FRONT_HIT_SHAPES)).toBeUndefined()
+    expect(pickMuscle(13, 5, FRONT_HIT_SHAPES)).toBeUndefined()
+    expect(pickMuscle(13, 5, BACK_HIT_SHAPES)).toBeUndefined()
+    expect(pickMuscle(43, 210, FRONT_HIT_SHAPES)).toBeUndefined()
   })
 
-  it('rajatapaus tasatulos: valitsee pienemmän alueen', () => {
-    const areas: MuscleHitArea[] = [
-      { muscle: 'quads', cx: 40, cy: 100, rx: 10, ry: 10 },
-      { muscle: 'adductors', cx: 40, cy: 100, rx: 6, ry: 6 },
-    ]
-    expect(pickMuscle(40, 100, areas)).toBe('adductors')
-    expect(pickMuscle(40, 100, [...areas].reverse())).toBe('adductors')
-  })
-
-  it('rajatapaus tyhjä alueluettelo: palauttaa undefined', () => {
+  it('rajatapaus tyhjä muotoluettelo: palauttaa undefined', () => {
     expect(pickMuscle(43, 147, [])).toBeUndefined()
   })
 })

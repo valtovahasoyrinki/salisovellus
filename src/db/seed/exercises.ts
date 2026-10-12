@@ -120,7 +120,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Penkkipunnerrus Smith-laitteessa',
-    aliases: ['smith bench', 'smith'],
+    aliases: ['smith bench', 'smith', 'smith machine'],
     primaryMuscles: ['chest'],
     secondaryMuscles: ['front_delts', 'triceps'],
     equipment: 'machine',
@@ -132,7 +132,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Vinopenkkipunnerrus Smith-laitteessa',
-    aliases: ['smith incline', 'smith'],
+    aliases: ['smith incline', 'smith', 'smith machine'],
     primaryMuscles: ['chest', 'front_delts'],
     secondaryMuscles: ['triceps'],
     equipment: 'machine',
@@ -326,7 +326,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Kulmasoutu',
-    aliases: ['barbell row', 'bent over row'],
+    aliases: ['barbell row', 'bent over row', 'bb row'],
     primaryMuscles: ['upper_back', 'lats'],
     secondaryMuscles: ['biceps', 'rear_delts', 'lower_back'],
     equipment: 'barbell',
@@ -496,7 +496,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Pystypunnerrus Smith-laitteessa',
-    aliases: ['smith shoulder press', 'smith'],
+    aliases: ['smith shoulder press', 'smith', 'smith machine'],
     primaryMuscles: ['front_delts'],
     secondaryMuscles: ['side_delts', 'triceps'],
     equipment: 'machine',
@@ -556,7 +556,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Sivunostot käsipainoilla',
-    aliases: ['lateral raise', 'side raise'],
+    aliases: ['lateral raise', 'side raise', 'side delt'],
     primaryMuscles: ['side_delts'],
     secondaryMuscles: ['traps'],
     equipment: 'dumbbell',
@@ -568,7 +568,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Sivunosto taljassa',
-    aliases: ['cable lateral raise', 'cable side raise'],
+    aliases: ['cable lateral raise', 'cable side raise', 'side delt'],
     primaryMuscles: ['side_delts'],
     secondaryMuscles: ['traps'],
     equipment: 'cable',
@@ -580,7 +580,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Sivunosto laitteessa',
-    aliases: ['lateral raise machine'],
+    aliases: ['lateral raise machine', 'side delt'],
     primaryMuscles: ['side_delts'],
     secondaryMuscles: [],
     equipment: 'machine',
@@ -970,7 +970,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Kyykky Smith-laitteessa',
-    aliases: ['smith squat', 'smith'],
+    aliases: ['smith squat', 'smith', 'smith machine'],
     primaryMuscles: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: 'machine',
@@ -1018,7 +1018,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Maastaveto',
-    aliases: ['deadlift'],
+    aliases: ['deadlift', 'dl'],
     primaryMuscles: ['glutes', 'hamstrings', 'lower_back'],
     secondaryMuscles: ['quads', 'traps', 'forearms'],
     equipment: 'barbell',
@@ -1354,7 +1354,7 @@ const ENTRIES: LibraryEntry[] = [
   },
   {
     name: 'Pohjenousu Smith-laitteessa',
-    aliases: ['smith calf raise', 'smith'],
+    aliases: ['smith calf raise', 'smith', 'smith machine'],
     primaryMuscles: ['calves'],
     secondaryMuscles: [],
     equipment: 'machine',

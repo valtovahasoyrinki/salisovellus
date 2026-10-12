@@ -7,16 +7,16 @@ import { MUSCLE_ORDER, muscleLabel, muscleLabels } from '@/domain/muscles'
 import type { MuscleId } from '@/domain/types'
 import { haptic } from '@/lib/haptics'
 import { BACK_MUSCLES, BODY_FILL, BODY_OUTLINE, FRONT_MUSCLES, VIEW_BOX } from './bodyPaths'
-import { BACK_HIT_AREAS, FRONT_HIT_AREAS, pickMuscle } from './hitTest'
+import { BACK_HIT_SHAPES, FRONT_HIT_SHAPES, pickMuscle } from './hitTest'
 
 /**
  * Lihasten valinta kartalta (SPEC §6.1, PLAN §9.4). Yksi näkymä kerrallaan
  * isona, jotta pienetkin lihakset osuvat sormeen 360 px leveällä ruudulla.
  * Napautus kiertää tilaa ei valittu → ensisijainen → toissijainen → ei valittu.
  *
- * Osuma lasketaan `hitTest.ts`:n osuma-alueista, ei polun täytöstä: alue on
- * näkyvää muotoa suurempi, joten kapea lihas ja muotojen väliin jäävä rako
- * valitsevat lähimmän lihaksen. Kartta on ruudunlukijalle tekstivastine, ja
+ * Osuma lasketaan `hitTest.ts`:ssä näkyvän muodon geometriasta: napautus
+ * valitsee sen lihaksen, jonka muodon sisällä piste on, ja muotojen väliin
+ * osuva napautus lähimmän lihaksen. Kartta on ruudunlukijalle tekstivastine, ja
  * "Valitse listasta" on sen rinnalla toimiva näppäimistö- ja varapolku.
  */
 export interface MuscleSelection {
@@ -131,7 +131,7 @@ export function MuscleSelector({ value, onChange, error }: MuscleSelectorProps) 
   const [announcement, setAnnouncement] = useState('')
 
   const shapes = view === 'front' ? FRONT_MUSCLES : BACK_MUSCLES
-  const areas = view === 'front' ? FRONT_HIT_AREAS : BACK_HIT_AREAS
+  const hitShapes = view === 'front' ? FRONT_HIT_SHAPES : BACK_HIT_SHAPES
   const primary = inDisplayOrder(value.primary)
   const secondary = inDisplayOrder(value.secondary)
 
@@ -152,7 +152,7 @@ export function MuscleSelector({ value, onChange, error }: MuscleSelectorProps) 
     const matrix = typeof svg.getScreenCTM === 'function' ? svg.getScreenCTM() : null
     if (!matrix) return
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
-    const muscle = pickMuscle(point.x, point.y, areas)
+    const muscle = pickMuscle(point.x, point.y, hitShapes)
     if (muscle === undefined) return
     commit(cycleMuscle(value, muscle), muscle)
   }
@@ -251,7 +251,7 @@ export function MuscleSelector({ value, onChange, error }: MuscleSelectorProps) 
 
       <Collapsible title="Valitse listasta">
         <div className="flex flex-col gap-4">
-          <fieldset className="space-y-2">
+          <fieldset className="min-w-0 space-y-2">
             <legend className="text-sm font-medium text-text">Ensisijaiset lihasryhmät</legend>
             <ChipRow label="Ensisijaiset lihasryhmät">
               {MUSCLE_ORDER.map((id) => (
@@ -265,7 +265,7 @@ export function MuscleSelector({ value, onChange, error }: MuscleSelectorProps) 
             </ChipRow>
           </fieldset>
 
-          <fieldset className="space-y-2">
+          <fieldset className="min-w-0 space-y-2">
             <legend className="text-sm font-medium text-text">Toissijaiset lihasryhmät</legend>
             <ChipRow label="Toissijaiset lihasryhmät">
               {MUSCLE_ORDER.map((id) => (

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { EQUIPMENT_ORDER, EXERCISE_KIND_LABELS, equipmentLabel } from '@/domain/equipment'
-import { findNameMatches, normalizeTerm } from '@/domain/exerciseSearch'
+import { findNameMatches, nameKey } from '@/domain/exerciseSearch'
 import type { Equipment, Exercise, ExerciseKind, Settings } from '@/domain/types'
 import { MuscleSelector, type MuscleSelection } from '@/components/MuscleMap/MuscleSelector'
 import { Badge } from '@/components/ui/Badge'
@@ -54,13 +54,20 @@ export interface QuickDefaults {
   repMax: number
 }
 
-export function quickDefaults(equipment: Equipment, settings: Settings): QuickDefaults {
+export function quickDefaults(
+  equipment: Equipment,
+  settings: Settings,
+  kind?: ExerciseKind,
+): QuickDefaults {
+  const effective = kind ?? (equipment === 'bodyweight' ? 'bodyweight' : 'weight_reps')
+  // Kestoliike kirjataan sekunteina, joten toistoalue on 1–1 (siemendatan sääntö).
+  const reps = effective === 'time' ? { min: 1, max: 1 } : { min: 8, max: 12 }
   return {
-    kind: equipment === 'bodyweight' ? 'bodyweight' : 'weight_reps',
+    kind: effective,
     increment: settings.increments[equipment] ?? DEFAULT_INCREMENTS[equipment],
     defaultRestSec: settings.defaultRestSec,
-    repMin: 8,
-    repMax: 12,
+    repMin: reps.min,
+    repMax: reps.max,
   }
 }
 
@@ -89,7 +96,7 @@ export function QuickExerciseForm({
   const [saving, setSaving] = useState(false)
   const [duplicateAccepted, setDuplicateAccepted] = useState(false)
 
-  const derived = quickDefaults(equipment, settings)
+  const derived = quickDefaults(equipment, settings, overrides.kind)
   const values: ExerciseFormValues = {
     name,
     primaryMuscles: muscles.primary,
@@ -114,24 +121,34 @@ export function QuickExerciseForm({
     moneen liikkeeseen), eikä varoitus silloin kertoisi mitään.
   */
   const duplicate = useMemo(() => findNameMatches(exercises, name)[0], [exercises, name])
-  const sameName = duplicate !== undefined && normalizeTerm(duplicate.name) === normalizeTerm(name)
+  const sameName = duplicate !== undefined && nameKey(duplicate.name) === nameKey(name)
   const showDuplicate = duplicate !== undefined && !duplicateAccepted
 
   const override = <K extends keyof Overrides>(key: K, value: Overrides[K]): void => {
     setOverrides((current) => ({ ...current, [key]: value }))
   }
 
+  /*
+    Salpa on refissä eikä tilassa: React ei flushaa `setSaving(true)`-tilaa
+    synkronisesti, joten kaksi nopeaa napautusta pääsisi molemmat läpi ja
+    liikkeitä syntyisi kaksi.
+  */
+  const submitting = useRef(false)
+
   const submit = async (): Promise<void> => {
+    if (submitting.current) return
     const result = validateExerciseForm(values, existingNames)
     if (!result.ok) {
       setErrors(result.errors)
       return
     }
+    submitting.current = true
     setErrors({})
     setSaving(true)
     try {
       await onSubmit(result.values)
     } finally {
+      submitting.current = false
       setSaving(false)
     }
   }
@@ -195,12 +212,12 @@ export function QuickExerciseForm({
           </Card>
         ) : null}
 
-        <fieldset className="space-y-2">
+        <fieldset className="min-w-0 space-y-2">
           <legend className="mb-1 text-sm font-medium text-text">Lihakset</legend>
           <MuscleSelector value={muscles} onChange={setMuscles} error={errors.primaryMuscles} />
         </fieldset>
 
-        <fieldset className="space-y-2">
+        <fieldset className="min-w-0 space-y-2">
           <legend className="text-sm font-medium text-text">Väline</legend>
           <ChipRow label="Väline">
             {EQUIPMENT_ORDER.map((id: Equipment) => (
@@ -216,7 +233,7 @@ export function QuickExerciseForm({
 
         <Collapsible title="Lisäasetukset" subtitle="Tyyppi, painonlisäys, lepo ja toistoalue">
           <div className="space-y-4">
-            <fieldset className="space-y-2">
+            <fieldset className="min-w-0 space-y-2">
               <legend className="text-sm font-medium text-text">Tyyppi</legend>
               <ChipRow label="Tyyppi">
                 {(Object.keys(EXERCISE_KIND_LABELS) as ExerciseKind[]).map((id) => (
@@ -273,7 +290,9 @@ export function QuickExerciseForm({
               label="Muistiinpano"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+              error={errors.notes}
               placeholder="Esim. kahvan leveys, istuimen korkeus"
+              maxLength={500}
               rows={2}
             />
           </div>
